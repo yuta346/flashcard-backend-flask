@@ -28,9 +28,6 @@ def from_popup():
     data = request.get_json()
     word = data.get("word")
     speech, definition, examples= get_dictionary_info(word)
-    print(type(speech))
-    print(type(definition))
-    print(type(examples))
     new_word = Word(word, speech, definition, examples)
     new_word.insert()
 
