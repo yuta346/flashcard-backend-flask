@@ -15,7 +15,7 @@ class wordNotFoundError(Error):
     pass
 
 
-def get_data(word):
+def get_dictionary_info(word):
     word_id = word
     url = "https://od-api.oxforddictionaries.com:443/api/v2/entries/" + language + "/" + word_id.lower()
 
@@ -31,18 +31,16 @@ def get_data(word):
     result = response.json()
 
     speech = result["results"][0]['lexicalEntries'][0]['lexicalCategory']['id']
-    definition = result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"][0]['definitions']
+    definition = result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"][0]['definitions'][0]
 
-    examples = []
     for word in result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"]:
         if word.get("examples"):
             example = word['examples'][0]['text']
-            examples.append(example)
             break
         else:
             break
 
-    return speech, definition ,examples
+    return speech, definition ,example
 
 
 #definitions
