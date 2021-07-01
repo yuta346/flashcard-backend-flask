@@ -1,42 +1,39 @@
-import sqlite3
+from models.schema import Words
+from models.setting import session
 
 class Word:
-
-    dbpath = "../data/flashcard.db"
-    tablename = "words"
-
-    def __init__(self, word, speech, definition, exapmle, pk=None):
+    def __init__(self, word, speech, definition, example, user_id):
         self.word = word
         self.speech = speech
         self.definition = definition
-        self.example = exapmle
-        self.pk = pk
+        self.example = example
+        self.user_id = user_id
+
+    def __repr__(self):
+        return f"<{self.word}, {self.speech}, {self.definition}, {self.example}, {self.user_id}>"
     
     def insert(self):
-        with sqlite3.connect(self.dbpath) as conn:
-            cursor = conn.cursor()
-            sql = f"""INSERT INTO {self.tablename} (word, speech, definition, example)
-                      VALUES (?,?,?,?)
-                   """
-            cursor.execute(sql, (self.word, self.speech, self.definition, self.example))
-
-    @classmethod
-    def show_words(cls):
-        with sqlite3.connect(cls.dbpath) as conn:
-            cursor = conn.cursor()
-            sql = f"""SELECT *
-                      FROM {cls.tablename}
-                   """
-            cursor.execute(sql)
-            return cursor.fetchall()
+        new_word = Words()
+        new_word.word = self.word
+        new_word.speech = self.speech
+        new_word.definition = self.definition
+        new_word.example = self.example
+        new_word.user_id = self.user_id
+        session.add(new_word)
+        session.commit()
+        print("commited!!!!")
     
+    @classmethod
+    def display(self):
+        all_words = session.query(Words).all() 
+        return all_words
+     
+        
 
 
 
+# w = Word("peach","noun")
+# w.insert()
 
-# if __name__ == "__main__":
-    # w1 = Word("apple","noun","fruit","none")
-    # w1.insert()
-    # w2 = Word("orange","noun","orange fruit","none")
-    # w2.insert()
-# print(Word.show_words())
+# words = session.query(Words).all()
+# print(words)

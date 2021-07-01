@@ -1,7 +1,6 @@
-from routes.routes import app
-from models.word import Word
 
-Word.dbpath = "data/flashcard.db"
+from views.routes import app
+
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()

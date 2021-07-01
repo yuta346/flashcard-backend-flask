@@ -6,18 +6,17 @@ pp = pprint.PrettyPrinter(indent=4)
 
 app_id = "cd2bf3dd"
 app_key = "33201d23b40488b6ecf7d40e61b3ef62"
-language = "en-us"
+LANGUAGE = "en-us"
 
 class Error(Exception):
     pass
 
-class wordNotFoundError(Error):
+class WordNotFoundError(Error):
     pass
 
-
 def get_dictionary_info(word):
-    word_id = word
-    url = "https://od-api.oxforddictionaries.com:443/api/v2/entries/" + language + "/" + word_id.lower()
+
+    url = "https://od-api.oxforddictionaries.com:443/api/v2/entries/" + LANGUAGE + "/" + word.lower()
 
     try:
         response = requests.get(url, headers={"app_id": app_id, "app_key": app_key})
@@ -26,12 +25,13 @@ def get_dictionary_info(word):
         raise ConnectionError
 
     if response.status_code == 404:
-        raise wordNotFoundError
+        raise WordNotFoundError("word not found")
 
     result = response.json()
 
     speech = result["results"][0]['lexicalEntries'][0]['lexicalCategory']['id']
     definition = result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"][0]['definitions'][0]
+    example = ""
 
     for word in result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"]:
         if word.get("examples"):
@@ -43,6 +43,8 @@ def get_dictionary_info(word):
     return speech, definition ,example
 
 
+
+# print(get_dictionary_info("ace"))
 #definitions
 # for word in result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"]:
 #     print(word['definitions'])
