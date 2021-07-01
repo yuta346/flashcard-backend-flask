@@ -32,9 +32,10 @@ class User:
         password_hash = pwd_context.encrypt(password)
         return password_hash
 
+    @staticmethod
+    def verify_password(password, password_hash):
+        return pwd_context.verify(password, password_hash)
 
-    def verify_password(self, password):
-        return pwd_context.verify(password, self.password_hash)
 
     @staticmethod
     def generate_session_id():

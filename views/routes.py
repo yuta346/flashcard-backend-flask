@@ -11,9 +11,9 @@ app = Flask(__name__)
 
 #pre: Users table is initialized
 #post add new user's info to the table and return a message
-#test curl -X POST http://127.0.0.1:5000/api/create_account -d '{"username":"u3","email":"u3@gmail.com","password":"33333"}'  -H "Content-Type: application/json"
-@app.route("/api/create_account", methods=["POST"])  #modify password and session 
-def create_account():
+#test curl -X POST http://127.0.0.1:5000/api/signup -d '{"username":"u3","email":"u3@gmail.com","password":"33333"}'  -H "Content-Type: application/json"
+@app.route("/api/signup", methods=["POST"])  #modify password and session 
+def signup():
 
     data = request.get_json()
     username = data.get("username")
@@ -26,7 +26,6 @@ def create_account():
     if session.query(Users).filter(Users.username==username).first() is not None:
         return jsonify({"status":"fail - Account already exists"})
 
-
     new_user = User(username, email, password_hash, session_id)
     new_user.insert()
     User.display()
@@ -34,9 +33,23 @@ def create_account():
     return jsonify({"status":"success"})
 
 
+#pre: user has signed up and user's data exist in the database
+#post: return success if verified
+#test curl -X POST http://127.0.0.1:5000/api/login -d '{"username":"u5", "password":"55555"}'  -H "Content-Type: application/json"
+@app.route("/api/login", methods=["POST"])
+def login():
+    
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
 
-
-
+    user = session.query(Users).filter(Users.username==username).first()
+    password_hash = user.password
+   
+    result = User.verify_password(password, password_hash)
+    if result == True:
+        return jsonify({"status":"success"})
+    return jsonify({"status":"fail"})
 
 
 
