@@ -12,7 +12,7 @@ app = Flask(__name__)
 #pre: Users table is initialized
 #post add new user's info to the table and return a message
 #test curl -X POST http://127.0.0.1:5000/add/user -d '{"username":"u3","email":"u3@gmail.com","password":"33333"}'  -H "Content-Type: application/json"
-@app.route("/create_account", methods=["POST"])  #modify password and session_id later
+@app.route("/create_account", methods=["POST"])  #modify password and session 
 def create_account():
 
     data = request.get_json()
@@ -29,35 +29,25 @@ def create_account():
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 #pre: Word's table is initialized
 #post: add user's custom data the database and return a status message 
-#test curl -X POST http://127.0.0.1:5000/add/card -d '{"word":"banana","speech":"noun","definition":"fruit","example":"none"}'  -H "Content-Type: application/json"
-@app.route("/add/card", methods=["POST"])  #create user's custom card
-def add():
+#test curl -X POST http://127.0.0.1:5000/add_card -d '{"word":"banana","speech":"noun","definition":"fruit","example":"none"}'  -H "Content-Type: application/json"
+@app.route("/add_card", methods=["POST"])  #create user's custom card
+def add_card():
 
     data = request.get_json()
-    print(data)
     word = data.get("word")
     speech = data.get("speech")
     definition = data.get("definition")
     example = data.get("example")
-    user_id = data.get("user_id")
+    user = session.query(Users).filter(Users.username=='u4').first()  #get username or session_id from react
+    user_id = user.id
+    print(user.id)
+    print(type(user))
 
     try:
         speech, definition, example = get_dictionary_info(word)
-        new_word = Word(word,speech,definition,example,user_id)
+        new_word = Word(word, speech, definition, example, user_id)
         new_word.insert()
         words = Word.display()
         print(words)
@@ -85,11 +75,11 @@ def add_from_popup(): #add word from chrome extension popup
         return jsonify({"status":"fail"})
 
 
-#pre: words table is initialized
+#pre: Words table is initialized and cards exist
 #post:return a word_list contains all the data in the Words' table
-#test curl -X GET http://127.0.0.1:5000/display -H "Content-Type: application/json"
-@app.route("/display/words", methods=['GET'])
-def display():  
+#test curl -X GET http://127.0.0.1:5000/display_all -H "Content-Type: application/json"
+@app.route("/display_all", methods=['GET'])
+def display_all():  
     
     # words = session.query(Words).all() 
     words = Word.display()
@@ -127,6 +117,19 @@ def update_card():
     print(words)
 
     return jsonify({"status":"success"})
+
+
+#pre: Words table is initialized and word exists
+#post: return 10 rondomly picked words from the database
+@app.route("/random_card", methods=["GET"])
+def get_random_card():
+
+    #get username or session_id
+    #use username of session_id to get get user_id 
+    #query to get all words associated with user
+    #randomly pick words
+    #if total number of words is less than 10, return all of them
+    #else pick 1o words randomly 
     
 
 
