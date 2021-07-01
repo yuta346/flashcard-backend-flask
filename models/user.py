@@ -1,29 +1,45 @@
+from passlib.apps import custom_app_context as pwd_context
+import uuid
 from models.schema import Users
 from models.setting import session
 
 
+
 class User:
 
-    def __init__(self, username, email, hashed_password, session_id=None, pk=None):
+    def __init__(self, username, email, password_hash, session_id=None, pk=None):
         self.username = username
         self.email = email
-        self.hashed_password = hashed_password
+        self.password_hash = password_hash
         self.session_id = session_id
         self.pk = pk
     
 
     def __repr__(self):
-        return f"<{self.username}, {self.email}, {self.hashed_password}, {self.session_id}, {self.pk}>"
+        return f"<{self.username}, {self.email}, {self.password_hash}, {self.session_id}, {self.pk}>"
     
     def insert(self):
         new_user = Users()
         new_user.username = self.username
         new_user.email = self.email
-        new_user.password = self.hashed_password
+        new_user.password = self.password_hash
         new_user.session_id = self.session_id
         session.add(new_user)
         session.commit()
-        print("commited!!!!")
+
+    @staticmethod
+    def hash_password(password):
+        password_hash = pwd_context.encrypt(password)
+        return password_hash
+
+
+    def verify_password(self, password):
+        return pwd_context.verify(password, self.password_hash)
+
+    @staticmethod
+    def generate_session_id():
+        return uuid.uuid4()
+
     
     @classmethod
     def display(self):

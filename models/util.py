@@ -2,6 +2,7 @@ import requests
 import json
 import pprint
 
+
 pp = pprint.PrettyPrinter(indent=4)
 
 app_id = "cd2bf3dd"
@@ -44,7 +45,3 @@ def get_dictionary_info(word):
 
 
 
-# print(get_dictionary_info("ace"))
-#definitions
-# for word in result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"]:
-#     print(word['definitions'])

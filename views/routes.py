@@ -11,17 +11,23 @@ app = Flask(__name__)
 
 #pre: Users table is initialized
 #post add new user's info to the table and return a message
-#test curl -X POST http://127.0.0.1:5000/add/user -d '{"username":"u3","email":"u3@gmail.com","password":"33333"}'  -H "Content-Type: application/json"
-@app.route("/create_account", methods=["POST"])  #modify password and session 
+#test curl -X POST http://127.0.0.1:5000/api/create_account -d '{"username":"u3","email":"u3@gmail.com","password":"33333"}'  -H "Content-Type: application/json"
+@app.route("/api/create_account", methods=["POST"])  #modify password and session 
 def create_account():
 
     data = request.get_json()
     username = data.get("username")
     email = data.get("email")
     password = data.get("password")
-    session_id = "12345"
 
-    new_user = User(username, email, password, session_id)
+    password_hash = User.hash_password(password)
+    session_id = str(User.generate_session_id())
+
+    if session.query(Users).filter(Users.username==username).first() is not None:
+        return jsonify({"status":"fail - Account already exists"})
+
+
+    new_user = User(username, email, password_hash, session_id)
     new_user.insert()
     User.display()
 
@@ -29,10 +35,15 @@ def create_account():
 
 
 
+
+
+
+
+
 #pre: Word's table is initialized
 #post: add user's custom data the database and return a status message 
 #test curl -X POST http://127.0.0.1:5000/add_card -d '{"word":"banana","speech":"noun","definition":"fruit","example":"none"}'  -H "Content-Type: application/json"
-@app.route("/add_card", methods=["POST"])  #create user's custom card
+@app.route("/api/add_card", methods=["POST"])  #create user's custom card
 def add_card():
 
     data = request.get_json()
@@ -59,7 +70,7 @@ def add_card():
 #pre: Word's table is initialized
 #post: call api and save data to Words table then return a status message 
 #test curl -X POST http://127.0.0.1:5000/add/popup -d '{"word":"tangerine"}'  -H "Content-Type: application/json"
-@app.route("/add/popup", methods=['POST']) 
+@app.route("/api/add_popup", methods=['POST']) 
 def add_from_popup(): #add word from chrome extension popup
     data = request.get_json()
     word = data.get("word")
@@ -78,7 +89,7 @@ def add_from_popup(): #add word from chrome extension popup
 #pre: Words table is initialized and cards exist
 #post:return a word_list contains all the data in the Words' table
 #test curl -X GET http://127.0.0.1:5000/display_all -H "Content-Type: application/json"
-@app.route("/display_all", methods=['GET'])
+@app.route("/api/display_all", methods=['GET'])
 def display_all():  
     
     # words = session.query(Words).all() 
@@ -98,7 +109,7 @@ def display_all():
 
 
 #test  curl -X POST http://127.0.0.1:5000/uodate/card -d '{"word":"cherry","speech":"noun","definition":"fruit","example":"none"}'  -H "Content-Type: application/json"
-@app.route("/update/card", methods=["POST"]) #modify it later
+@app.route("/api/update_card", methods=["POST"]) #modify it later
 def update_card():
     data = request.get_json()
     word = data.get("word")
@@ -121,8 +132,9 @@ def update_card():
 
 #pre: Words table is initialized and word exists
 #post: return 10 rondomly picked words from the database
-@app.route("/random_card", methods=["GET"])
+@app.route("/api/random_card", methods=["GET"])
 def get_random_card():
+    pass
 
     #get username or session_id
     #use username of session_id to get get user_id 
