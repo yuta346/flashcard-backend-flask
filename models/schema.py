@@ -15,8 +15,8 @@ class Users(Base):
     words = relationship("Words", lazy=True)
 
     def __repr__(self):
-        return "<User(id='%s',username='%s', email='%s', password='%s')>" % (
-                             self.id, self.username, self.email, self.password)
+        return "<User(id='%s',username='%s', email='%s', password='%s', self.session_id='%s')>" % (
+                             self.id, self.username, self.email, self.password, self.session_id)
 
 class Words(Base):
     __tablename__ = 'words'

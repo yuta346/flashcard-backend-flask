@@ -24,10 +24,11 @@ def signup():
     session_id = str(User.generate_session_id())
 
     if session.query(Users).filter(Users.username==username).first() is not None:
-        return jsonify({"status":"fail - Account already exists"})
+        return jsonify({"status":"fail", "message":"Account already exists"})
 
     new_user = User(username, email, password_hash, session_id)
-    new_user.insert()
+  
+    # new_user.insert()
     User.display()
 
     return jsonify({"status":"success"})
@@ -42,21 +43,49 @@ def login():
     data = request.get_json()
     username = data.get("username")
     password = data.get("password")
+    session_id = str(User.generate_session_id())
+    
+    user = session.query(Users).filter(Users.username==username).one()
+    if user is None:
+        return jsonify({"status": "fail", "message":"account does not exist"})
 
-    user = session.query(Users).filter(Users.username==username).first()
+    User.display()
+
     password_hash = user.password
-   
     result = User.verify_password(password, password_hash)
-    if result == True:
-        return jsonify({"status":"success"})
+    if result == True and username == user.username:
+        #update session_id in db
+        return jsonify({"status":"success", "username":user.username, "session_id":user.session_id})
     return jsonify({"status":"fail"})
+
+
+@app.route("/api/logout", methods=["POST"])
+def logout():
+
+    data = request.get_json()
+    session_id = data.get("session_id")
+
+    user = session.query(Users).filter(Users.session_id == session_id).one()
+
+    user.session_id = None
+
+    session.commit()
+
+
+@app.route("/api/update", methods=["POST"])
+def update():
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
+    update_list
+
 
 
 
 #pre: Word's table is initialized
 #post: add user's custom data the database and return a status message 
 #test curl -X POST http://127.0.0.1:5000/add_card -d '{"word":"banana","speech":"noun","definition":"fruit","example":"none"}'  -H "Content-Type: application/json"
-@app.route("/api/add_card", methods=["POST"])  #create user's custom card
+@app.route("/api/add_card", methods=["POST"])  #create user's custom card fix it later
 def add_card():
 
     data = request.get_json()
@@ -64,7 +93,7 @@ def add_card():
     speech = data.get("speech")
     definition = data.get("definition")
     example = data.get("example")
-    user = session.query(Users).filter(Users.username=='u4').first()  #get username or session_id from react
+    user = session.query(Users).filter(Users.username=='u4').one()  #get username or session_id from react
     user_id = user.id
     print(user.id)
     print(type(user))
@@ -130,7 +159,7 @@ def update_card():
     definition = data.get("definition")
     example = data.get("example")
 
-    word_update = session.query(Words).filter(Words.word==word).first()
+    word_update = session.query(Words).filter(Words.word==word).one()
     print(word_update)
     word_update.word = word
     word_update.speech = speech

@@ -1,7 +1,7 @@
 import requests
 import json
 import pprint
-
+from models.setting import session
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -44,4 +44,10 @@ def get_dictionary_info(word):
     return speech, definition ,example
 
 
+
+
+def update(self, table_name, **kwargs):
+        user_update = session.query(table_name).filter(table_name.session_id == self.session_id).one()
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 

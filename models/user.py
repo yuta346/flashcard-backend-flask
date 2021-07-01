@@ -7,7 +7,7 @@ from models.setting import session
 
 class User:
 
-    def __init__(self, username, email, password_hash, session_id=None, pk=None):
+    def __init__(self, username, email, password_hash, session_id, pk=None):
         self.username = username
         self.email = email
         self.password_hash = password_hash
@@ -27,6 +27,7 @@ class User:
         session.add(new_user)
         session.commit()
 
+
     @staticmethod
     def hash_password(password):
         password_hash = pwd_context.encrypt(password)
@@ -40,6 +41,10 @@ class User:
     @staticmethod
     def generate_session_id():
         return uuid.uuid4()
+    
+    @classmethod
+    def session_authenticate():
+        pass
 
     
     @classmethod
