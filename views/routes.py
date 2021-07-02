@@ -104,7 +104,7 @@ def add_word():
     try:
         speech, definition, example = get_dictionary_info(word)
         Words.insert(word, speech, definition, example, user_id)
-        Words.display() #for debugging
+        Words.display() 
         return jsonify({"status":"success"})
     except WordNotFoundError as e:
         return jsonify({"status":"fail"})
