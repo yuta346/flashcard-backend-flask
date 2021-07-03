@@ -87,10 +87,21 @@ class Words(Base):
         session.commit()
 
     @classmethod
-    def display(cls):
+    def display_all(cls,user_id):
         all_words = session.query(Words).all() 
-        print(all_words)
-        return all_words
+        word_list = []
+        num_choices = len(all_words)
+        
+        for word in all_words:
+            word_dict = {}
+            word_dict["word"] = word.word
+            word_dict["speech"] = word.speech
+            word_dict["definition"] = word.definition
+            word_dict["short_definition"] = word.short_definition
+            word_dict["example"] = word.example
+            word_dict["choices"] = Words.generate_choices(word.short_definition, user_id, num_choices)
+            word_list.append(word_dict)
+        return word_list
     
     @classmethod
     def generate_ramdom_cards(cls, user_id, num_cards):
@@ -129,7 +140,6 @@ class Words(Base):
                     multiple_choices.append(word.short_definition)
         multiple_choices_shaffle = random.sample(multiple_choices, len(multiple_choices))
         return multiple_choices_shaffle
-
 
 
 

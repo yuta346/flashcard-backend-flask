@@ -140,22 +140,21 @@ def add_from_popup(): #add word from chrome extension popup
 
 #pre: Words table is initialized and cards exist
 #post:return a word_list contains all the data in the Words' table
-#test curl -X GET http://127.0.0.1:5000/api/display_all -H "Content-Type: application/json"
-@app.route("/api/display_all_flashcards", methods=['GET'])
+#test curl -X POST http://127.0.0.1:5000/api/generate_flashcards -d '{"session_id":"9c8a0ac9-8123-4888-8823-e773b04efa91"}'  -H "Content-Type: application/json"
+@app.route("/api/display_all_flashcards", methods=['POST'])
 def display_all_flashcards():  
-    
-    words = Words.display()
-    word_list = []
+    data = request.get_json()
+    session_id = data.get("session_id")
+    user = session.query(Users).filter(Users.session_id == session_id).one()
 
-    for word in words:
-        word_dict = {}
-        word_dict["word"] = word.word
-        word_dict["speech"] = word.speech
-        word_dict["definition"] = word.definition
-        word_dict["short_definition"] = word.short_definition
-        word_dict["example"] = word.example
-        word_list.append(word_dict)
+    if user is None:
+        return jsonify({"status":"fail"})
+
+    user_id = user.id
+    word_list = Words.display_all(user_id)
+    
     return jsonify({"result":word_list})
+
 
 
 #test  curl -X POST http://127.0.0.1:5000/uodate/card -d '{"word":"cherry","speech":"noun","definition":"fruit","example":"none"}'  -H "Content-Type: application/json"
