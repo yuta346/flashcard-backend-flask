@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 
 from models.schema import Users, Words
 from models.setting import session
@@ -7,6 +8,7 @@ from models.util import get_dictionary_info, Error, WordNotFoundError
 
 
 app = Flask(__name__)
+CORS(app)
 
 #pre: Users table is initialized
 #post: add new user's info to the table and return a message
@@ -15,6 +17,7 @@ app = Flask(__name__)
 def signup():
 
     data = request.get_json()
+    print(data)
     username = data.get("username")
     email = data.get("email")
     password = data.get("password")
@@ -86,6 +89,14 @@ def update():
     password = data.get("password")
     pass
 
+#curl -X GET http://127.0.0.1:5000/api/display_users -H "Content-Type: application/json"
+@app.route("/api/display_users", methods=["GET"])
+def display_users():
+    Users.display()
+    return jsonify({"status":"success"})
+    
+
+
 
 #pre: Word's table is initialized
 #post: add user's custom data the database and return a status message 
@@ -130,8 +141,8 @@ def add_from_popup(): #add word from chrome extension popup
 #pre: Words table is initialized and cards exist
 #post:return a word_list contains all the data in the Words' table
 #test curl -X GET http://127.0.0.1:5000/api/display_all -H "Content-Type: application/json"
-@app.route("/api/display_all", methods=['GET'])
-def display_all():  
+@app.route("/api/display_all_flashcards", methods=['GET'])
+def display_all_flashcards():  
     
     words = Words.display()
     word_list = []
@@ -147,8 +158,8 @@ def display_all():
 
 
 #test  curl -X POST http://127.0.0.1:5000/uodate/card -d '{"word":"cherry","speech":"noun","definition":"fruit","example":"none"}'  -H "Content-Type: application/json"
-@app.route("/api/update_card", methods=["POST"]) #modify it later
-def update_card():
+@app.route("/api/update_flashcard", methods=["POST"]) #modify it later
+def update_flashcard():
     data = request.get_json()
     word = data.get("word")
     speech = data.get("speech")
@@ -169,21 +180,39 @@ def update_card():
 
 
 #pre: Words table is initialized and word exists
-#post: return 10 rondomly picked words from the database
-#test: curl -X POST http://127.0.0.1:5000/api/random_cards -d '{"session_id":"3e189cf2-2238-411e-a576-4c6c7a484725"}'  -H "Content-Type: application/json"
-@app.route("/api/random_cards", methods=["POST"])
-def get_random_cards():
+#post: return rondomly picked words, multiple choice with answer key 
+#test: curl -X POST http://127.0.0.1:5000/api/generate_flashcards -d '{"session_id":"3d4abeec-097a-4931-80b6-d5d6d635ca7f", "num_cards":"0"}'  -H "Content-Type: application/json"
+@app.route("/api/generate_flashcards", methods=["POST"])
+def generate_flashcards():
+    # word_list = Words.generate_ramdom_cards()
+    # print(word_list)
+    # return jsonify({"status":"success"})
+
+
 
     data = request.get_json()
     session_id = data.get("session_id")
+    num_cards = int(data.get("num_cards"))
     user = session.query(Users).filter(Users.session_id == session_id).one()
     if user is None:
         return jsonify({"status":"fail"})
     user_id = user.id
-    word_list = Words.generate_ramdom(user_id)
 
+    #generate__choices
+
+
+    word_list = Words.generate_ramdom_cards(user_id, num_cards)
+    # word_list = Words.generate_ramdom_cards(user_id)
+    print(word_list)
     return jsonify({"result":word_list})
 
+
+
+
+
+@app.route("/api/display_performances", methods=["POST"])
+def display_performance():
+    pass
 
 
 
