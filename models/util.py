@@ -1,7 +1,6 @@
 import requests
 import json
 import pprint
-from models.setting import session
 
 pp = pprint.PrettyPrinter(indent=4)
 
@@ -32,6 +31,7 @@ def get_dictionary_info(word):
 
     speech = result["results"][0]['lexicalEntries'][0]['lexicalCategory']['id']
     definition = result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"][0]['definitions'][0]
+    short_definition = result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"][0]['shortDefinitions'][0]
     example = ""
 
     for word in result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"]:
@@ -41,13 +41,7 @@ def get_dictionary_info(word):
         else:
             break
 
-    return speech, definition ,example
+    return speech, definition , short_definition, example
 
 
-
-
-def update(self, table_name, **kwargs):
-        user_update = session.query(table_name).filter(table_name.session_id == self.session_id).one()
-        for key, value in kwargs.items():
-            setattr(self, key, value)
 

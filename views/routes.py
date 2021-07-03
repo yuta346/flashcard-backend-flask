@@ -109,12 +109,12 @@ def add_word():
     speech = data.get("speech")
     definition = data.get("definition")
     example = data.get("example")
-    user = session.query(Users).filter(Users.username=='u4').one()  #get username or session_id from react
+    user = session.query(Users).filter(Users.username=='u1').one()  #get username or session_id from react
     user_id = user.id
 
     try:
-        speech, definition, example = get_dictionary_info(word)
-        Words.insert(word, speech, definition, example, user_id)
+        speech, definition, short_definition, example = get_dictionary_info(word)
+        Words.insert(word, speech, definition,short_definition,  example, user_id)
         Words.display() 
         return jsonify({"status":"success"})
     except WordNotFoundError as e:
@@ -130,8 +130,8 @@ def add_from_popup(): #add word from chrome extension popup
     word = data.get("word")
 
     try:
-        speech, definition, example = get_dictionary_info(word)
-        Words.insert(word, speech, definition, example)
+        speech, definition, short_definition, example = get_dictionary_info(word)
+        Words.insert(word, speech, definition, short_definition, example)
         Words.display()
         return jsonify({"status":"success"})
     except WordNotFoundError as e:
@@ -152,6 +152,7 @@ def display_all_flashcards():
         word_dict["word"] = word.word
         word_dict["speech"] = word.speech
         word_dict["definition"] = word.definition
+        word_dict["short_definition"] = word.short_definition
         word_dict["example"] = word.example
         word_list.append(word_dict)
     return jsonify({"result":word_list})
@@ -164,6 +165,7 @@ def update_flashcard():
     word = data.get("word")
     speech = data.get("speech")
     definition = data.get("definition")
+    short_definition = data.get("short_definition")
     example = data.get("example")
 
     word_update = session.query(Words).filter(Words.word==word).one()
@@ -181,32 +183,23 @@ def update_flashcard():
 
 #pre: Words table is initialized and word exists
 #post: return rondomly picked words, multiple choice with answer key 
-#test: curl -X POST http://127.0.0.1:5000/api/generate_flashcards -d '{"session_id":"3d4abeec-097a-4931-80b6-d5d6d635ca7f", "num_cards":"0"}'  -H "Content-Type: application/json"
+#test: curl -X POST http://127.0.0.1:5000/api/generate_flashcards -d '{"session_id":"9c8a0ac9-8123-4888-8823-e773b04efa91", "num_cards":"0"}'  -H "Content-Type: application/json"
 @app.route("/api/generate_flashcards", methods=["POST"])
 def generate_flashcards():
-    # word_list = Words.generate_ramdom_cards()
-    # print(word_list)
-    # return jsonify({"status":"success"})
-
-
-
+   
     data = request.get_json()
     session_id = data.get("session_id")
     num_cards = int(data.get("num_cards"))
     user = session.query(Users).filter(Users.session_id == session_id).one()
+    print(user)
+
     if user is None:
         return jsonify({"status":"fail"})
+
     user_id = user.id
-
-    #generate__choices
-
-
     word_list = Words.generate_ramdom_cards(user_id, num_cards)
-    # word_list = Words.generate_ramdom_cards(user_id)
     print(word_list)
     return jsonify({"result":word_list})
-
-
 
 
 

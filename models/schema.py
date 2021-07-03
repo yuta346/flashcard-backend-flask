@@ -63,22 +63,24 @@ class Users(Base):
 class Words(Base):
     __tablename__ = 'words'
     id = Column(Integer, primary_key=True)
-    word = Column(String)
+    word = Column(String,unique=True)
     speech = Column(String)
     definition = Column(String)
+    short_definition = Column(String)
     example = Column(String)
     user_id = Column(Integer, ForeignKey('users.id'))
     performances = relationship("Performances", lazy=True)
 
     def __repr__(self):
-        return "<Word(id='%s',word='%s', speech='%s', definition='%s', example='%s', user_id='%s')>" % (
-                             self.id, self.word, self.speech, self.definition, self.example, self.user_id)
+        return "<Word(id='%s',word='%s', speech='%s', definition='%s', short_definition='%s',example='%s', user_id='%s')>" % (
+                             self.id, self.word, self.speech, self.short_definition, self.definition, self.example, self.user_id)
     @classmethod
-    def insert(cls, word, speech, definition, example, user_id):
+    def insert(cls, word, speech, definition, short_definition, example, user_id):
         new_word = Words()
         new_word.word = word
         new_word.speech = speech
         new_word.definition = definition
+        new_word.short_definition = short_definition
         new_word.example = example
         new_word.user_id = user_id
         session.add(new_word)
@@ -93,7 +95,7 @@ class Words(Base):
     @classmethod
     def generate_ramdom_cards(cls, user_id, num_cards):
 
-        num_choices = num_cards * 2
+        num_choices = num_cards * 3
 
         if num_cards < 0:
             num_cards = 0
@@ -109,21 +111,27 @@ class Words(Base):
             word_dict["word"] = word.word
             word_dict["speech"] = word.speech
             word_dict["definition"] = word.definition
+            word_dict["short_definition"] = word.short_definition
             word_dict["example"] = word.example
-            word_dict["choices"] = Words.generate_choices(word.definition, user_id, num_choices)
+            word_dict["choices"] = Words.generate_choices(word.short_definition, user_id, num_choices)
             word_list.append(word_dict)
         return word_list
     
     #generate_choice
     @classmethod
-    def generate_choices(cls, definition, user_id, num_choices):
+    def generate_choices(cls, short_definition, user_id, num_choices):
 
-        multiple_choices = [definition]
+        multiple_choices = [short_definition]
         words = session.query(Words).filter(Words.user_id == user_id).order_by(func.random()).limit(num_choices).all()
         for word in words:
-            if word.definition !=  definition and word.definition not in multiple_choices:
-                multiple_choices.append(word.definition)
-        return multiple_choices
+            if len(multiple_choices) <= 3:
+                if word.short_definition !=  short_definition and word.short_definition not in multiple_choices:
+                    multiple_choices.append(word.short_definition)
+        multiple_choices_shaffle = random.sample(multiple_choices, len(multiple_choices))
+        return multiple_choices_shaffle
+
+
+
 
 
 class Performances(Base):
