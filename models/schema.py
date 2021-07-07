@@ -17,7 +17,8 @@ class Users(Base):
     email = Column(String, unique=True)
     password_hash = Column(String)
     session_id = Column(String)
-    words = relationship("Words", lazy=True)
+    word_id = relationship("Words", lazy=True)
+    acviity_id = relationship("Activities", lazy=True)
 
     def __repr__(self):
         return "<User(id='%s',username='%s', email='%s', password_hash='%s', self.session_id='%s')>" % (
@@ -63,13 +64,15 @@ class Users(Base):
 class Words(Base):
     __tablename__ = 'words'
     id = Column(Integer, primary_key=True)
-    word = Column(String,unique=True)
+    word = Column(String)
     speech = Column(String)
     definition = Column(String)
     short_definition = Column(String)
     example = Column(String)
     user_id = Column(Integer, ForeignKey('users.id'))
-    performances = relationship("Performances", lazy=True)
+    # activity_id = relationship("Activities", back_populates="words",lazy=True, uselist=False)
+    activity_id = relationship("Activities",lazy=True, )
+    # child = relationship("Child", back_populates="parent", uselist=False)
 
     def __repr__(self):
         return "<Word(id='%s',word='%s', speech='%s', definition='%s', short_definition='%s',example='%s', user_id='%s')>" % (
@@ -89,11 +92,13 @@ class Words(Base):
     @classmethod
     def display_all(cls,user_id):
         all_words = session.query(Words).all() 
+        
         word_list = []
         num_choices = len(all_words)
         
         for word in all_words:
             word_dict = {}
+            word_dict["word_id"] = word.id
             word_dict["word"] = word.word
             word_dict["speech"] = word.speech
             word_dict["definition"] = word.definition
@@ -101,7 +106,25 @@ class Words(Base):
             word_dict["example"] = word.example
             word_dict["choices"] = Words.generate_choices(word.short_definition, user_id, num_choices)
             word_list.append(word_dict)
-        return word_list
+        isMastered_dict = Words.generate_isMastered_dict(word_list)
+        return word_list, isMastered_dict
+
+    
+    @classmethod
+    def generate_isMastered_dict(cls, word_list):
+        isMastered_dict = {}
+        for word in word_list:
+            print(word)
+            isMastered_dict[word["word"]] = [word["word_id"], False]
+        return isMastered_dict
+
+
+        
+
+
+
+
+
     
     @classmethod
     def generate_ramdom_cards(cls, user_id, num_cards):
@@ -125,6 +148,7 @@ class Words(Base):
             word_dict["short_definition"] = word.short_definition
             word_dict["example"] = word.example
             word_dict["choices"] = Words.generate_choices(word.short_definition, user_id, num_choices)
+            word_dict["mastered"] = False
             word_list.append(word_dict)
         return word_list
     
@@ -144,23 +168,45 @@ class Words(Base):
 
 
 
-class Performances(Base):
-    __tablename__ = 'performances'
+class Activities(Base):
+    __tablename__ = 'activities'
     id = Column(Integer, primary_key=True)
     date = Column(DateTime, default=datetime.utcnow)
-    isLearned = Column(Boolean)
-    numAttempt = Column(Boolean)
+    isMastered = Column(Boolean)
+    numAttempt = Column(Integer)
+    user_id = Column(Integer, ForeignKey('users.id'))
     word_id = Column(Integer, ForeignKey('words.id'))
 
     def __repr__(self):
-        return "<Performance(id='%s',date='%s',isLearned='%s', numAttempt='%s',word_id='%s')>" % (
-                             self.id, self.isLearned, self.word_id)
+        return "<Activity(id='%s',date='%s',isMastered='%s', numAttempt='%s',user_id='%s' ,word_id='%s')>" % (
+                             self.id, self.date, self.isMastered, self.numAttempt, self.user_id, self.word_id)
 
     @classmethod
-    def display(cls):
-        all_performances = session.query(Words).all() 
-        print(all_performances)
-        return all_performances
+    def display_all(cls):
+        all_activities = session.query(Activities).all() 
+        print(all_activities)
+        return all_activities
+    
+    @classmethod
+    def insert(cls, user_id, word_id):
+        new_activity = Activities()
+        new_activity.user_id = user_id
+        new_activity.word_id = word_id
+        session.add(new_activity)
+        session.commit()
+    
+    @classmethod
+    def update_activity(cls, user_id, isMastered_dict):
+        print(user_id, isMastered_dict)
+        print(len(isMastered_dict))
+        for key, value in isMastered_dict.items():
+            print(key, value[0], value[1])
+            session.query(Activities).\
+                    filter(Activities.user_id == user_id).\
+                    filter(Activities.word_id == value[0]).\
+                    update({Activities.isMastered:value[1]}, synchronize_session = False)
+            
+
 
     
                     
