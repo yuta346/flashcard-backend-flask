@@ -182,8 +182,8 @@ class Activities(Base):
                              self.id, self.date, self.isMastered, self.numAttempt, self.user_id, self.word_id)
 
     @classmethod
-    def display_all(cls):
-        all_activities = session.query(Activities).all() 
+    def display_all(cls, user_id):
+        all_activities = session.query(Activities).filter(Activities.user_id == user_id).all() 
         print(all_activities)
         return all_activities
     
@@ -211,21 +211,3 @@ class Activities(Base):
     
                     
 # Base.metadata.create_all(engine)
-
-#language column 
-
-
-# w1 = Words()
-# w1.word = "apple"
-# w1.speech = "noun"
-# session.add(w1)
-# session.commit()
-
-# w2 = Word("orange","noun")
-# w2.insert()
-# session.add(w2)
-# session.commit()
-
-# words = session.query(Words).all()
-# print(words)
-

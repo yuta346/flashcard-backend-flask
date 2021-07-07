@@ -233,7 +233,18 @@ def update_activity():
         return jsonify({"status":"fail", "message":"user does not exist"})
     user_id = user.id
     Activities.update_activity(user_id, isMastered_dict)
-    print(len(Activities.display_all()))
+    print(len(Activities.display_all(user_id)))
     return jsonify({"status":"success"})
 
+
+@app.route("/api/get_activity", methods=["POST"])
+def get_activity():
+    data = request.get_json()
+    session_id = data.get("session_id")
+    user = session.query(Users).filter(Users.session_id == session_id).one()
+    if user is None:
+        return jsonify({"status":"fail", "message":"user does not exist"})
+    user_id = user.id
+    user_activities = Activities.display_all(user_id)
+    return jsonify({"activities": user_activities})
 
