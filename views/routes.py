@@ -61,6 +61,20 @@ def login():
         return jsonify({"status":"success", "username":user.username, "session_id":user.session_id})
     return jsonify({"status":"fail"})
 
+@app.route("/api/popup_login", methods=["POST"])
+def popup_login():
+    
+    data = request.get_json()
+    username = data.get("username")
+    password = data.get("password")
+    user = session.query(Users).filter(Users.username==username).one()
+    if user is None:
+        return jsonify({"status": "fail", "message":"account does not exist"})
+    password_hash = user.password_hash
+    result = Users.verify_password(password, password_hash)
+    if result == True and username == user.username:
+        return jsonify({"status":"success", "username":user.username, "session_id":user.session_id})
+
 
 #pre: session_id exists
 #post: clear the session_id and return a status code and message
@@ -101,38 +115,57 @@ def display_users():
 #pre: Word's table is initialized
 #post: add user's custom data the database and return a status message 
 #test curl -X POST http://127.0.0.1:5000/api/add_word -d '{"word":"banana","speech":"noun","definition":"fruit","example":"none"}'  -H "Content-Type: application/json"
-@app.route("/api/add_word", methods=["POST"])  #create user's custom card fix it later
+@app.route("/api/add/word", methods=["POST"])  #create user's custom card fix it later
 def add_word():
 
     data = request.get_json()
-    word = data.get("userInput")["word"]
-    speech = data.get("userInput")["speech"]
-    definition = data.get("userInput")["definition"]
-    example = data.get("userInput")["usage"]
+    print(data)
+    word = data.get("word_info_list")[0]["word"]
+    word_info_list = data.get("word_info_list")
+    radioValue = data.get("radioValue")
     session_id = data.get("session_id")
     user = session.query(Users).filter(Users.session_id==session_id).one()  #get username or session_id from react
     user_id = user.id
 
-    #check if word already exists
-    users_word = session.query(Words).filter(Words.user_id == user_id).filter(Words.word == word).all()
-    if users_word:
-        return jsonify({"status":"fail", "message":"word already exists"})
+    # users_word = session.query(Words).filter(Words.user_id == user_id).filter(Words.word == word).all()
+    # if users_word:
+    #     return jsonify({"status":"fail", "message":"word already exists"})
 
     try:
-        speech, definition, short_definition, example = get_dictionary_info(word)
-        Words.insert(word, speech, definition, short_definition, example, user_id)
-        inserted_word = session.query(Words).filter(Words.user_id == user_id).filter(Words.word == word).one()
-        inserted_word_id = inserted_word.id
+        for word_info in word_info_list:
+            if word_info["short_definition"]== radioValue:
+                print("hello")
+                print(radioValue)
+                Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], False, user_id)
+            Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], True, user_id)
+
+        # inserted_word = session.query(Words).filter(Words.user_id == user_id).filter(Words.word == word).one()
+        # inserted_word_id = inserted_word.id
         word_list, isMastered_dict = Words.display_all(user_id)
         print(word_list)
-        print(isMastered_dict)
-        Activities.insert(user_id, inserted_word_id)
+        # print(isMastered_dict)
+        # Activities.insert(user_id, inserted_word_id)
         # Activities.display_all()
         # words= Words.display_all(user_id)
         # print(words) 
         return jsonify({"status":"success"})
     except WordNotFoundError as e:
         return jsonify({"status":"fail", "message": "cannot find a word"})
+
+
+@app.route("/api/serach/definitions", methods=["POST"])
+def search_definitions():
+    data = request.get_json()
+    word = data.get("word")
+    session_id = data.get("session_id")
+
+    try:
+        word_info_list = get_dictionary_info(word)
+        return jsonify({"status":"success", "definition_choice": word_info_list})
+    except WordNotFoundError as e:
+        return jsonify({"status":"fail", "message": "cannot find a word"})
+
+
 
 
 #pre: Word's table is initialized
@@ -142,17 +175,19 @@ def add_word():
 def add_from_popup(): #add word from chrome extension popup
     data = request.get_json()
     word = data.get("word")
-    print(data)
-    return jsonify({"status":"success", "word":word})
+    session_id = data.get("session_id")
+    user = session.query(Users).filter(Users.session_id==session_id).one()  #get username or session_id from react
+    user_id = user.id
 
-    # try:
-    #     speech, definition, short_definition, example = get_dictionary_info(word)
-    #     Words.insert(word, speech, definition, short_definition, example)
-    #     words = Words.display()
-    #     print(words)
-    #     return jsonify({"status":"success"})
-    # except WordNotFoundError as e:
-    #     return jsonify({"status":"fail"})
+    try:
+        word_info_list = get_dictionary_info(word)
+        for word_info in word_info_list:
+            Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], True, user_id)
+            words = Words.display()
+            print(words)
+            return jsonify({"status":"success"})
+    except WordNotFoundError as e:
+        return jsonify({"status":"fail"})
 
 
 #pre: Words table is initialized and cards exist
@@ -162,12 +197,15 @@ def add_from_popup(): #add word from chrome extension popup
 def display_all_flashcards():  
     data = request.get_json()
     session_id = data.get("session_id")
+    num_cards = data.get("num_cards")
+    print(num_cards)
     user = session.query(Users).filter(Users.session_id == session_id).one()
     if user is None:
         return jsonify({"status":"fail"})
 
     user_id = user.id
-    word_list, isMastered_dict = Words.display_all(user_id)
+    word_list, isMastered_dict = Words.display_all(user_id, num_cards)
+    print(isMastered_dict)
     
     return jsonify({"word_list":word_list, "isMastered_dict": isMastered_dict})
 

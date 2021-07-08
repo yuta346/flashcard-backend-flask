@@ -28,20 +28,36 @@ def get_dictionary_info(word):
         raise WordNotFoundError("word not found")
 
     result = response.json()
-
-    speech = result["results"][0]['lexicalEntries'][0]['lexicalCategory']['id']
-    definition = result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"][0]['definitions'][0]
-    short_definition = result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"][0]['shortDefinitions'][0]
-    example = ""
-
-    for word in result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"]:
-        if word.get("examples"):
-            example = word['examples'][0]['text']
-            break
-        else:
-            break
-
-    return speech, definition , short_definition, example
+   
+    word_info_list = []
+    for i in range(len(result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"])):
+        
+        word_info_dict = {"word":word}
+        for key in result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"][i]:
+            if key == "definitions":
+                word_info_dict["definition"] = result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"][i]['definitions'][0]
+                break
+            else:
+                word_info_dict["definition"] = None
+        
 
 
+        for key in result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"][i]:
+            if key == "shortDefinitions":
+                word_info_dict["short_definition"] = result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"][i]['shortDefinitions'][0]
+                break
+            else:
+                word_info_dict["short_definition"] = None
+        
+        for word_key in result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"][i]:
+             if word_key == "examples":
+                 word_info_dict["example"] = result["results"][0]['lexicalEntries'][0]['entries'][0]["senses"][i]['examples'][0]['text']
+                 break
+             else:
+                word_info_dict["example"] = None
+        word_info_list.append(word_info_dict)
 
+    return word_info_list
+
+
+# get_dictionary_info("apple")

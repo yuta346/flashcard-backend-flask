@@ -69,43 +69,49 @@ class Words(Base):
     definition = Column(String)
     short_definition = Column(String)
     example = Column(String)
+    pending = Column(Boolean)
     user_id = Column(Integer, ForeignKey('users.id'))
     # activity_id = relationship("Activities", back_populates="words",lazy=True, uselist=False)
     activity_id = relationship("Activities",lazy=True, )
     # child = relationship("Child", back_populates="parent", uselist=False)
 
     def __repr__(self):
-        return "<Word(id='%s',word='%s', speech='%s', definition='%s', short_definition='%s',example='%s', user_id='%s')>" % (
-                             self.id, self.word, self.speech, self.short_definition, self.definition, self.example, self.user_id)
+        return "<Word(id='%s',word='%s', definition='%s', short_definition='%s',example='%s', pending='%s', user_id='%s')>" % (
+                             self.id, self.word, self.short_definition, self.definition, self.example, self.pending, self.user_id)
     @classmethod
-    def insert(cls, word, speech, definition, short_definition, example, user_id):
+    def insert(cls, word, definition, short_definition, example, pending, user_id):
         new_word = Words()
         new_word.word = word
-        new_word.speech = speech
         new_word.definition = definition
         new_word.short_definition = short_definition
         new_word.example = example
+        new_word.pending = pending
         new_word.user_id = user_id
         session.add(new_word)
         session.commit()
 
     @classmethod
-    def display_all(cls,user_id):
-        all_words = session.query(Words).all() 
+    def display_all(cls,user_id,  num_cards=20):
+        print(num_cards)
+        all_words = session.query(Words).filter(Words.pending==False).limit(num_cards).all()
+        print(all_words)
         
         word_list = []
+        temp = []
         num_choices = len(all_words)
         
         for word in all_words:
-            word_dict = {}
-            word_dict["word_id"] = word.id
-            word_dict["word"] = word.word
-            word_dict["speech"] = word.speech
-            word_dict["definition"] = word.definition
-            word_dict["short_definition"] = word.short_definition
-            word_dict["example"] = word.example
-            word_dict["choices"] = Words.generate_choices(word.short_definition, user_id, num_choices)
-            word_list.append(word_dict)
+            if word.word not in temp:
+                temp.append(word.word)
+                word_dict = {}
+                word_dict["word_id"] = word.id
+                word_dict["word"] = word.word
+                word_dict["definition"] = word.definition
+                word_dict["short_definition"] = word.short_definition
+                word_dict["example"] = word.example
+                word_dict["choices"] = Words.generate_choices(word.short_definition, user_id, num_choices)
+                word_dict["pending"] = word.pending
+                word_list.append(word_dict)
         isMastered_dict = Words.generate_isMastered_dict(word_list)
         return word_list, isMastered_dict
 
@@ -114,7 +120,6 @@ class Words(Base):
     def generate_isMastered_dict(cls, word_list):
         isMastered_dict = {}
         for word in word_list:
-            print(word)
             isMastered_dict[word["word"]] = [word["word_id"], False]
         return isMastered_dict
 
@@ -122,12 +127,8 @@ class Words(Base):
         
 
 
-
-
-
-    
     @classmethod
-    def generate_ramdom_cards(cls, user_id, num_cards):
+    def generate_ramdom_cards(cls, user_id, num_cards=20):
 
         num_choices = num_cards * 3
 
