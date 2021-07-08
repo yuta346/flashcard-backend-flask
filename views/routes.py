@@ -45,8 +45,9 @@ def login():
     password = data.get("password")
     session_id = str(Users.generate_session_id())
     
-    user = session.query(Users).filter(Users.username==username).one()
-    if user is None:
+    try:
+        user = session.query(Users).filter(Users.username==username).one()
+    except:
         return jsonify({"status": "fail", "message":"account does not exist"})
 
     Users.display()
