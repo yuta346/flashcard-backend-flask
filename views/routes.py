@@ -25,7 +25,8 @@ def signup():
     password_hash = Users.hash_password(password)
     session_id = str(Users.generate_session_id())
 
-    if session.query(Users).filter(Users.username==username).first() is not None:
+    user = Users.find_user(username)
+    if user is not None:
         return jsonify({"status":"fail", "message":"Account already exists"})
 
     Users.insert(username, email, password_hash, session_id)
@@ -43,22 +44,18 @@ def login():
     data = request.get_json()
     username = data.get("username")
     password = data.get("password")
-    session_id = str(Users.generate_session_id())
     
-    try:
-        user = session.query(Users).filter(Users.username==username).one()
-    except:
+    user = Users.find_user(username)
+
+    if user is None:
         return jsonify({"status": "fail", "message":"account does not exist"})
 
-    Users.display()
-
     password_hash = user.password_hash
-    result = Users.verify_password(password, password_hash)
-    if result == True and username == user.username:
-        #update session_id in db
+    auth = Users.verify_password(password, password_hash)
+    if auth == True and username == user.username:
+        session_id = str(Users.generate_session_id())
         user.session_id = session_id
         session.commit()
-        Users.display()
         return jsonify({"status":"success", "username":user.username, "session_id":user.session_id})
     return jsonify({"status":"fail"})
 
@@ -85,7 +82,7 @@ def logout():
 
     data = request.get_json()
     session_id = data.get("session_id")
-    user = session.query(Users).filter(Users.session_id == session_id).one()
+    user = Users.session_authenticate(session_id)
 
     if user is None:
         return jsonify({"status":"fail"})
@@ -104,13 +101,6 @@ def update():
     password = data.get("password")
     pass
 
-#curl -X GET http://127.0.0.1:5000/api/display_users -H "Content-Type: application/json"
-@app.route("/api/display_users", methods=["GET"])
-def display_users():
-    Users.display()
-    return jsonify({"status":"success"})
-    
-
 
 
 #pre: Word's table is initialized
@@ -120,30 +110,25 @@ def display_users():
 def add_word():
 
     data = request.get_json()
-    print(data)
-    word = data.get("word_info_list")[0]["word"]
     word_info_list = data.get("word_info_list")
     radioValue = data.get("radioValue")
     session_id = data.get("session_id")
-    user = session.query(Users).filter(Users.session_id==session_id).one()  #get username or session_id from react
-    user_id = user.id
+    user = Users.session_authenticate(session_id)
+    print(word_info_list)
 
-    # users_word = session.query(Words).filter(Words.user_id == user_id).filter(Words.word == word).all()
-    # if users_word:
-    #     return jsonify({"status":"fail", "message":"word already exists"})
+    if user is None:
+        return jsonify({"status":"fail", "message":"authentication failed"})
 
     try:
         for word_info in word_info_list:
             if word_info["short_definition"]== radioValue:
                 print("hello")
                 print(radioValue)
-                Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], False, user_id)
-            Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], True, user_id)
-
-        # inserted_word = session.query(Words).filter(Words.user_id == user_id).filter(Words.word == word).one()
-        # inserted_word_id = inserted_word.id
-        word_list, isMastered_dict = Words.display_all(user_id)
-        print(word_list)
+                Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], False, user.id)
+            Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], True, user.id)
+        Words.get_flashcards(user.id)
+        # word_list, isMastered_dict = Words.display_all(user.id)
+        # print(word_list)
         # print(isMastered_dict)
         # Activities.insert(user_id, inserted_word_id)
         # Activities.display_all()
@@ -177,14 +162,13 @@ def add_from_popup(): #add word from chrome extension popup
     data = request.get_json()
     word = data.get("word")
     session_id = data.get("session_id")
-    user = session.query(Users).filter(Users.session_id==session_id).one()  #get username or session_id from react
-    user_id = user.id
+    user = Users.session_authenticate(session_id)
 
     try:
         word_info_list = get_dictionary_info(word)
         for word_info in word_info_list:
-            Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], True, user_id)
-            words = Words.display()
+            Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], True, user.id)
+            words = Words.get_flashcards()
             print(words)
             return jsonify({"status":"success"})
     except WordNotFoundError as e:
@@ -200,12 +184,10 @@ def display_all_flashcards():
     session_id = data.get("session_id")
     num_cards = data.get("num_cards")
     print(num_cards)
-    user = session.query(Users).filter(Users.session_id == session_id).one()
+    user = Users.session_authenticate(session_id)
     if user is None:
         return jsonify({"status":"fail"})
-
-    user_id = user.id
-    word_list, isMastered_dict = Words.display_all(user_id, num_cards)
+    word_list, isMastered_dict = Words.get_flashcards(user.id, num_cards)
     print(isMastered_dict)
     
     return jsonify({"word_list":word_list, "isMastered_dict": isMastered_dict})
@@ -244,15 +226,11 @@ def generate_flashcards():
     data = request.get_json()
     session_id = data.get("session_id")
     num_cards = int(data.get("num_cards"))
-    user = session.query(Users).filter(Users.session_id == session_id).one()
-    print(user)
+    user = Users.session_authenticate(session_id)
 
     if user is None:
         return jsonify({"status":"fail"})
-
-    user_id = user.id
-    word_list = Words.generate_ramdom_cards(user_id, num_cards)
-    print(word_list)
+    word_list = Words.generate_ramdom_cards(user.id, num_cards)
     return jsonify({"result":word_list})
 
 
@@ -267,12 +245,11 @@ def update_activity():
     data = request.get_json()
     session_id = data.get("session_id")
     isMastered_dict  = data.get("isMastered")
-    user = session.query(Users).filter(Users.session_id == session_id).one()
+    user = Users.session_authenticate(session_id)
     if user is None:
         return jsonify({"status":"fail", "message":"user does not exist"})
-    user_id = user.id
-    Activities.update_activity(user_id, isMastered_dict)
-    print(len(Activities.display_all(user_id)))
+    Activities.update_activity(user.id, isMastered_dict)
+    print(len(Activities.display_all(user.id)))
     return jsonify({"status":"success"})
 
 
@@ -280,10 +257,9 @@ def update_activity():
 def get_activity():
     data = request.get_json()
     session_id = data.get("session_id")
-    user = session.query(Users).filter(Users.session_id == session_id).one()
+    user = Users.session_authenticate(session_id)
     if user is None:
         return jsonify({"status":"fail", "message":"user does not exist"})
-    user_id = user.id
-    user_activities = Activities.display_all(user_id)
+    user_activities = Activities.display_all(user.id)
     return jsonify({"activities": user_activities})
 

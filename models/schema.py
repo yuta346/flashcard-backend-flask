@@ -21,7 +21,7 @@ class Users(Base):
     acviity_id = relationship("Activities", lazy=True)
 
     def __repr__(self):
-        return "<User(id='%s',username='%s', email='%s', password_hash='%s', self.session_id='%s')>" % (
+        return "<User(id='%s',username='%s', email='%s', password_hash='%s', session_id='%s')>" % (
                              self.id, self.username, self.email, self.password_hash, self.session_id)
     
     @classmethod
@@ -59,6 +59,22 @@ class Users(Base):
     def generate_session_id():
         return uuid.uuid4()
     
+    @classmethod
+    def session_authenticate(cls, session_id):
+        user = session.query(Users).filter(Users.session_id==session_id).one() 
+        if user:
+            return user
+        return None
+
+
+    @classmethod
+    def find_user(cls, username):
+        user = session.query(Users).filter(Users.username==username).one() 
+        if user:
+            return user
+        return None
+
+    
 
 
 class Words(Base):
@@ -91,10 +107,8 @@ class Words(Base):
         session.commit()
 
     @classmethod
-    def display_all(cls,user_id,  num_cards=20):
-        print(num_cards)
-        all_words = session.query(Words).filter(Words.pending==False).limit(num_cards).all()
-        print(all_words)
+    def get_flashcards(cls, user_id,  num_cards=20):
+        all_words = session.query(Words).filter(Words.user_id == user_id).filter(Words.pending==False).limit(num_cards).all()
         
         word_list = []
         temp = []
@@ -109,7 +123,7 @@ class Words(Base):
                 word_dict["definition"] = word.definition
                 word_dict["short_definition"] = word.short_definition
                 word_dict["example"] = word.example
-                word_dict["choices"] = Words.generate_choices(word.short_definition, user_id, num_choices)
+                word_dict["choices"] = Words.generate_choices(word.short_definition, user_id)
                 word_dict["pending"] = word.pending
                 word_list.append(word_dict)
         isMastered_dict = Words.generate_isMastered_dict(word_list)
@@ -155,13 +169,13 @@ class Words(Base):
     
     #generate_choice
     @classmethod
-    def generate_choices(cls, short_definition, user_id, num_choices):
+    def generate_choices(cls, short_definition, user_id):
 
         multiple_choices = [short_definition]
-        words = session.query(Words).filter(Words.user_id == user_id).order_by(func.random()).limit(num_choices).all()
+        words = session.query(Words).filter(Words.user_id == user_id).order_by(func.random()).all()
         for word in words:
             if len(multiple_choices) <= 3:
-                if word.short_definition !=  short_definition and word.short_definition not in multiple_choices:
+                if word.short_definition != short_definition and word.short_definition not in multiple_choices and word.short_definition is not None:
                     multiple_choices.append(word.short_definition)
         multiple_choices_shaffle = random.sample(multiple_choices, len(multiple_choices))
         return multiple_choices_shaffle
