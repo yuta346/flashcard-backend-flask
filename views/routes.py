@@ -261,6 +261,6 @@ def get_activity():
     user = Users.session_authenticate(session_id)
     if user is None:
         return jsonify({"status":"fail", "message":"user does not exist"})
-    user_activities = Activities.display_all(user.id)
+    user_activities = Activities.get_activities(user.id)
     return jsonify({"activities": user_activities})
 
