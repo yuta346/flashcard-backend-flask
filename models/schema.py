@@ -69,10 +69,11 @@ class Users(Base):
 
     @classmethod
     def find_user(cls, username):
-        user = session.query(Users).filter(Users.username==username).one() 
-        if user:
+        try:
+            user = session.query(Users).filter(Users.username==username).one() 
             return user
-        return None
+        except:
+            return None
 
     
 
@@ -107,14 +108,20 @@ class Words(Base):
         session.commit()
 
     @classmethod
+    def display_all_cards(cls, user_id):
+        return session.query(Words).filter(Words.user_id == user_id).all()
+
+
+
+    @classmethod
     def get_flashcards(cls, user_id,  num_cards=20):
-        all_words = session.query(Words).filter(Words.user_id == user_id).filter(Words.pending==False).limit(num_cards).all()
+        words = session.query(Words).filter(Words.user_id == user_id).filter(Words.pending==False).limit(num_cards).all()
         
         word_list = []
         temp = []
-        num_choices = len(all_words)
+        num_choices = len(words)
         
-        for word in all_words:
+        for word in words:
             if word.word not in temp:
                 temp.append(word.word)
                 word_dict = {}
@@ -129,6 +136,17 @@ class Words(Base):
         isMastered_dict = Words.generate_isMastered_dict(word_list)
         return word_list, isMastered_dict
 
+    @classmethod
+    def generate_choices(cls, short_definition, user_id):
+
+        multiple_choices = [short_definition]
+        words = session.query(Words).filter(Words.user_id == user_id).filter(Words.pending==False).order_by(func.random()).all()
+        for word in words:
+            if len(multiple_choices) <= 3:
+                if word.short_definition != short_definition and word.short_definition not in multiple_choices and word.short_definition is not None:
+                    multiple_choices.append(word.short_definition)
+        multiple_choices_shaffle = random.sample(multiple_choices, len(multiple_choices))
+        return multiple_choices_shaffle
     
     @classmethod
     def generate_isMastered_dict(cls, word_list):
@@ -141,44 +159,35 @@ class Words(Base):
         
 
 
-    @classmethod
-    def generate_ramdom_cards(cls, user_id, num_cards=20):
+    # @classmethod
+    # def generate_ramdom_cards(cls, user_id, num_cards=20):
 
-        num_choices = num_cards * 3
+    #     num_choices = num_cards * 3
 
-        if num_cards < 0:
-            num_cards = 0
+    #     if num_cards < 0:
+    #         num_cards = 0
 
-        words = session.query(Words).filter(Words.user_id == user_id).order_by(func.random()).limit(num_cards).all()
-        word_list = []
+    #     words = session.query(Words).filter(Words.user_id == user_id).filter(Words.pending == False).order_by(func.random()).limit(num_cards).all()
+    #     print(words)
+    #     word_list = []
 
-        if len(words) < num_cards:
-            num_cards = len(words)
+    #     if len(words) < num_cards:
+    #         num_cards = len(words)
         
-        for word in words:
-            word_dict = {}
-            word_dict["word"] = word.word
-            word_dict["speech"] = word.speech
-            word_dict["definition"] = word.definition
-            word_dict["short_definition"] = word.short_definition
-            word_dict["example"] = word.example
-            word_dict["choices"] = Words.generate_choices(word.short_definition, user_id, num_choices)
-            word_dict["mastered"] = False
-            word_list.append(word_dict)
-        return word_list
+    #     for word in words:
+    #         word_dict = {}
+    #         word_dict["word"] = word.word
+    #         word_dict["speech"] = word.speech
+    #         word_dict["definition"] = word.definition
+    #         word_dict["short_definition"] = word.short_definition
+    #         word_dict["example"] = word.example
+    #         word_dict["choices"] = Words.generate_choices(word.short_definition, user_id, num_choices)
+    #         word_dict["mastered"] = False
+    #         word_list.append(word_dict)
+    #     return word_list
     
     #generate_choice
-    @classmethod
-    def generate_choices(cls, short_definition, user_id):
-
-        multiple_choices = [short_definition]
-        words = session.query(Words).filter(Words.user_id == user_id).order_by(func.random()).all()
-        for word in words:
-            if len(multiple_choices) <= 3:
-                if word.short_definition != short_definition and word.short_definition not in multiple_choices and word.short_definition is not None:
-                    multiple_choices.append(word.short_definition)
-        multiple_choices_shaffle = random.sample(multiple_choices, len(multiple_choices))
-        return multiple_choices_shaffle
+    
 
 
 
@@ -197,32 +206,49 @@ class Activities(Base):
                              self.id, self.date, self.isMastered, self.numAttempt, self.user_id, self.word_id)
 
     @classmethod
-    def display_all(cls, user_id):
-        all_activities = session.query(Activities).filter(Activities.user_id == user_id).all() 
-        print(all_activities)
-        return all_activities
+    def get_activities(cls, user_id):
+        try:
+            all_activities = session.query(Activities).filter(Activities.user_id == user_id).all() 
+            return all_activities
+        except:
+            return None
+
     
     @classmethod
-    def insert(cls, user_id, word_id):
+    def insert(cls, user_id, word_id, isMastered):
         new_activity = Activities()
         new_activity.user_id = user_id
         new_activity.word_id = word_id
+        new_activity.isMastered = isMastered
         session.add(new_activity)
         session.commit()
     
     @classmethod
     def update_activity(cls, user_id, isMastered_dict):
-        print(user_id, isMastered_dict)
-        print(len(isMastered_dict))
+
+        activities = Activities.get_activities(user_id)
+        word_ids = []
+        if activities:
+            for activity in activities:
+                word_ids.append(activity.word_id)
+    
         for key, value in isMastered_dict.items():
-            print(key, value[0], value[1])
-            session.query(Activities).\
-                    filter(Activities.user_id == user_id).\
-                    filter(Activities.word_id == value[0]).\
-                    update({Activities.isMastered:value[1]}, synchronize_session = False)
-            
-
-
+            if activities is None or value[0] not in word_ids:
+                if value[1] == True:
+                    Activities.insert(user_id, value[0], True)
+                else:
+                    Activities.insert(user_id, value[0], False)
+                break
+            else:
+                print("yes, exits")
+                print(session.query(Activities).filter(Activities.user_id == user_id).filter(Activities.word_id == 1).one() )
+                session.query(Activities).\
+                        filter(Activities.user_id == user_id).\
+                        filter(Activities.word_id == value[0]).\
+                        update({Activities.isMastered: value[1]}, synchronize_session = False)
+        
+        print(Activities.get_activities(user_id))
+ 
     
                     
 # Base.metadata.create_all(engine)

@@ -111,27 +111,27 @@ def add_word():
 
     data = request.get_json()
     word_info_list = data.get("word_info_list")
+    print(word_info_list)
+    print(len(word_info_list))
     radioValue = data.get("radioValue")
     session_id = data.get("session_id")
     user = Users.session_authenticate(session_id)
-    print(word_info_list)
 
     if user is None:
         return jsonify({"status":"fail", "message":"authentication failed"})
 
     try:
         for word_info in word_info_list:
+            print(word_info)
             if word_info["short_definition"]== radioValue:
-                print("hello")
-                print(radioValue)
+                print("hi")
                 Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], False, user.id)
-            Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], True, user.id)
-        Words.get_flashcards(user.id)
-        # word_list, isMastered_dict = Words.display_all(user.id)
-        # print(word_list)
-        # print(isMastered_dict)
-        # Activities.insert(user_id, inserted_word_id)
-        # Activities.display_all()
+            else:
+                Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], True, user.id)
+        # Words.get_flashcards(user.id)
+        all_cards = Words.display_all_cards(user.id)
+        print(all_cards)
+        # 
         # words= Words.display_all(user_id)
         # print(words) 
         return jsonify({"status":"success"})
@@ -248,9 +248,10 @@ def update_activity():
     user = Users.session_authenticate(session_id)
     if user is None:
         return jsonify({"status":"fail", "message":"user does not exist"})
+
     Activities.update_activity(user.id, isMastered_dict)
-    print(len(Activities.display_all(user.id)))
     return jsonify({"status":"success"})
+
 
 
 @app.route("/api/get_activity", methods=["POST"])
