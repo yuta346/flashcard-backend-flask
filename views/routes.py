@@ -124,10 +124,9 @@ def add_word():
         for word_info in word_info_list:
             print(word_info)
             if word_info["short_definition"]== radioValue:
-                print("hi")
-                Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], False, user.id)
+                Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], True, False, user.id)
             else:
-                Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], True, user.id)
+                Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], False, False, user.id)
         # Words.get_flashcards(user.id)
         all_cards = Words.display_all_cards(user.id)
         print(all_cards)
@@ -167,7 +166,7 @@ def add_from_popup(): #add word from chrome extension popup
     try:
         word_info_list = get_dictionary_info(word)
         for word_info in word_info_list:
-            Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], True, user.id)
+            Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], True, True, user.id)
             words = Words.get_flashcards()
             print(words)
             return jsonify({"status":"success"})
@@ -245,6 +244,7 @@ def update_activity():
     data = request.get_json()
     session_id = data.get("session_id")
     isMastered_dict  = data.get("isMastered")
+    print(isMastered_dict)
     user = Users.session_authenticate(session_id)
     if user is None:
         return jsonify({"status":"fail", "message":"user does not exist"})
@@ -261,6 +261,23 @@ def get_activity():
     user = Users.session_authenticate(session_id)
     if user is None:
         return jsonify({"status":"fail", "message":"user does not exist"})
-    user_activities = Activities.get_activities(user.id)
-    return jsonify({"activities": user_activities})
+    user_activities, num_mastered = Activities.get_activities(user.id)
+    # print(user_activities)
+    # print(num_mastered)
+    return jsonify({"activities": user_activities, "numMastered": num_mastered})
 
+
+# @app.route("/api/account/activity/words", methods=["POST"])
+# def get_words_activity():
+#     data = request.get_json()
+#     session_id = data.get("session_id")
+#     user = Users.session_authenticate(session_id)
+#     if user is None:
+#         return jsonify({"status":"fail", "message":"user does not exist"})
+#     print(user)
+#     if user is None:
+#         return jsonify({"status":"fail", "message":"user does not exist"})
+#     words_activity = Activities.get_words_activities(user.id)
+#     print(words_activity)
+#     return jsonify({"status":"succes"})
+    

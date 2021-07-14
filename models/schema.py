@@ -7,6 +7,7 @@ from datetime import datetime
 from passlib.apps import custom_app_context as pwd_context
 import uuid
 import random
+from datetime import datetime
 from sqlalchemy import func
 
 
@@ -62,6 +63,7 @@ class Users(Base):
     @classmethod
     def session_authenticate(cls, session_id):
         user = session.query(Users).filter(Users.session_id==session_id).one() 
+        print(user)
         if user:
             return user
         return None
@@ -86,6 +88,7 @@ class Words(Base):
     definition = Column(String)
     short_definition = Column(String)
     example = Column(String)
+    selected = Column(Boolean)
     pending = Column(Boolean)
     user_id = Column(Integer, ForeignKey('users.id'))
     # activity_id = relationship("Activities", back_populates="words",lazy=True, uselist=False)
@@ -93,15 +96,16 @@ class Words(Base):
     # child = relationship("Child", back_populates="parent", uselist=False)
 
     def __repr__(self):
-        return "<Word(id='%s',word='%s', definition='%s', short_definition='%s',example='%s', pending='%s', user_id='%s')>" % (
-                             self.id, self.word, self.short_definition, self.definition, self.example, self.pending, self.user_id)
+        return "<Word(id='%s',word='%s', definition='%s', short_definition='%s',example='%s', selected='%s',pending='%s' ,user_id='%s')>" % (
+                             self.id, self.word, self.short_definition, self.definition, self.example, self.selected, self.pending, self.user_id)
     @classmethod
-    def insert(cls, word, definition, short_definition, example, pending, user_id):
+    def insert(cls, word, definition, short_definition, example, selected, pending, user_id):
         new_word = Words()
         new_word.word = word
         new_word.definition = definition
         new_word.short_definition = short_definition
         new_word.example = example
+        new_word.selected = selected
         new_word.pending = pending
         new_word.user_id = user_id
         session.add(new_word)
@@ -115,7 +119,7 @@ class Words(Base):
 
     @classmethod
     def get_flashcards(cls, user_id,  num_cards=20):
-        words = session.query(Words).filter(Words.user_id == user_id).filter(Words.pending==False).limit(num_cards).all()
+        words = session.query(Words).filter(Words.user_id == user_id).filter(Words.selected==True).limit(num_cards).all()
         
         word_list = []
         temp = []
@@ -124,6 +128,7 @@ class Words(Base):
         for word in words:
             if word.word not in temp:
                 temp.append(word.word)
+                #word.as_dict()
                 word_dict = {}
                 word_dict["word_id"] = word.id
                 word_dict["word"] = word.word
@@ -131,16 +136,18 @@ class Words(Base):
                 word_dict["short_definition"] = word.short_definition
                 word_dict["example"] = word.example
                 word_dict["choices"] = Words.generate_choices(word.short_definition, user_id)
+                word_dict["selected"] = word.selected
                 word_dict["pending"] = word.pending
                 word_list.append(word_dict)
         isMastered_dict = Words.generate_isMastered_dict(word_list)
-        return word_list, isMastered_dict
+        word_list_shaffle = random.sample(word_list, len(word_list))
+        return word_list_shaffle, isMastered_dict
 
     @classmethod
     def generate_choices(cls, short_definition, user_id):
 
         multiple_choices = [short_definition]
-        words = session.query(Words).filter(Words.user_id == user_id).filter(Words.pending==False).order_by(func.random()).all()
+        words = session.query(Words).filter(Words.user_id == user_id).filter(Words.selected==True).order_by(func.random()).all()
         for word in words:
             if len(multiple_choices) <= 3:
                 if word.short_definition != short_definition and word.short_definition not in multiple_choices and word.short_definition is not None:
@@ -205,13 +212,51 @@ class Activities(Base):
         return "<Activity(id='%s',date='%s',isMastered='%s', numAttempt='%s',user_id='%s' ,word_id='%s')>" % (
                              self.id, self.date, self.isMastered, self.numAttempt, self.user_id, self.word_id)
 
+
     @classmethod
     def get_activities(cls, user_id):
-        try:
-            all_activities = session.query(Activities).filter(Activities.user_id == user_id).all() 
-            return all_activities
-        except:
-            return None
+        all_activities = session.query(Words, Activities).\
+                        join(Activities).filter(Activities.user_id==user_id).filter(Words.user_id == user_id).filter(Activities.word_id == Words.id).all()
+        numMastered = 0
+        numNotMastered = 0
+        activities_list = []
+        for activitiy in all_activities:
+            activities_dict = {}
+            activities_dict["id"] = activitiy[0].id
+            activities_dict["word"] = activitiy[0].word
+            activities_dict["short_definition"] = activitiy[0].short_definition
+            activities_dict["pending"] = activitiy[0].pending
+            if activitiy[1].isMastered == True:
+                activities_dict["isMastered"] = "Mastered"
+            else:
+                activities_dict["isMastered"] = "Studying"
+            activities_list.append(activities_dict)
+            if activitiy[1].isMastered == True:
+                numMastered +=1
+            else:
+                numNotMastered +=1
+            numMastered_dict= {"name":"numMasteredc","value":numMastered}
+            numNotMastered_dict = {"name":"numNotMastered","value":numNotMastered}
+        return activities_list, [numMastered_dict, numNotMastered_dict]
+            
+
+
+    # @classmethod
+    # def get_num_mastered(cls, user_id):
+    #     try:
+    #         activities = session.query(Activities).filter(Activities.user_id == user_id).all() 
+    #         numMastered = 0
+    #         numNotMastered = 0
+    #         for acvitivy in activities:
+    #             if acvitivy.isMastered == True:
+    #                 numMastered +=1
+    #             else:
+    #                 numNotMastered +=1
+    #         numMastered_dict= {"name":"numMastered","value":numMastered}
+    #         numNotMastered_dict = {"name":"numNotMastered","value":numNotMastered}
+    #         return [numMastered_dict, numNotMastered_dict]
+    #     except:
+    #         return None
 
     
     @classmethod
@@ -226,28 +271,24 @@ class Activities(Base):
     @classmethod
     def update_activity(cls, user_id, isMastered_dict):
 
-        activities = Activities.get_activities(user_id)
-        word_ids = []
+        activities = session.query(Activities).filter(Activities.user_id == user_id).all()
+        word_id = []
         if activities:
             for activity in activities:
-                word_ids.append(activity.word_id)
+                word_id.append(activity.word_id)
     
         for key, value in isMastered_dict.items():
-            if activities is None or value[0] not in word_ids:
+            if len(activities) == 0 or value[0] not in word_id:
                 if value[1] == True:
                     Activities.insert(user_id, value[0], True)
                 else:
                     Activities.insert(user_id, value[0], False)
-                break
             else:
-                print("yes, exits")
-                print(session.query(Activities).filter(Activities.user_id == user_id).filter(Activities.word_id == 1).one() )
                 session.query(Activities).\
                         filter(Activities.user_id == user_id).\
                         filter(Activities.word_id == value[0]).\
                         update({Activities.isMastered: value[1]}, synchronize_session = False)
-        
-        print(Activities.get_activities(user_id))
+
  
     
                     
