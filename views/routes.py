@@ -182,6 +182,7 @@ def display_all_flashcards():
     data = request.get_json()
     session_id = data.get("session_id")
     num_cards = data.get("num_cards")
+    print("num cards###########")
     print(num_cards)
     user = Users.session_authenticate(session_id)
     if user is None:
@@ -261,10 +262,10 @@ def get_activity():
     user = Users.session_authenticate(session_id)
     if user is None:
         return jsonify({"status":"fail", "message":"user does not exist"})
-    user_activities, num_mastered = Activities.get_activities(user.id)
+    user_activities, activities_time_series, num_mastered = Activities.get_activities(user.id)
     # print(user_activities)
     # print(num_mastered)
-    return jsonify({"activities": user_activities, "numMastered": num_mastered})
+    return jsonify({"activities": user_activities, "numMastered": num_mastered, "time_series":activities_time_series})
 
 
 # @app.route("/api/account/activity/words", methods=["POST"])

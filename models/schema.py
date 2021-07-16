@@ -8,7 +8,7 @@ from passlib.apps import custom_app_context as pwd_context
 import uuid
 import random
 from datetime import datetime
-from sqlalchemy import func
+from sqlalchemy import func, not_, desc, and_, extract
 
 
 class Users(Base):
@@ -213,12 +213,56 @@ class Activities(Base):
                              self.id, self.date, self.isMastered, self.numAttempt, self.user_id, self.word_id)
 
 
+    # @classmethod
+    # def get_activities(cls, user_id):
+    #     all_activities = session.query(Words, Activities).\
+    #                     join(Activities).filter(Activities.user_id==user_id).filter(Words.user_id == user_id).filter(Activities.word_id == Words.id).all()
+    #     numMastered = 0
+    #     numNotMastered = 0
+    #     activities_list = []
+    #     for activitiy in all_activities:
+    #         activities_dict = {}
+    #         activities_dict["id"] = activitiy[0].id
+    #         activities_dict["word"] = activitiy[0].word
+    #         activities_dict["short_definition"] = activitiy[0].short_definition
+    #         activities_dict["pending"] = activitiy[0].pending
+    #         if activitiy[1].isMastered == True:
+    #             activities_dict["isMastered"] = "Mastered"
+    #         else:
+    #             activities_dict["isMastered"] = "Studying"
+    #         activities_list.append(activities_dict)
+    #         if activitiy[1].isMastered == True:
+    #             numMastered +=1
+    #         else:
+    #             numNotMastered +=1
+    #         numMastered_dict= {"name":"Mastered","value":numMastered}
+    #         numNotMastered_dict = {"name":"Studying","value":numNotMastered}
+    #     return activities_list, [numMastered_dict, numNotMastered_dict]
+
     @classmethod
     def get_activities(cls, user_id):
-        all_activities = session.query(Words, Activities).\
-                        join(Activities).filter(Activities.user_id==user_id).filter(Words.user_id == user_id).filter(Activities.word_id == Words.id).all()
+        all_activities = session.query(Words, Activities, func.max(Activities.date)).\
+                        join(Activities).\
+                        filter(Activities.user_id==user_id).\
+                        filter(Words.user_id == user_id).\
+                        filter(Activities.word_id == Words.id).\
+                        group_by(Activities.word_id).\
+                        all()
+
+        # activities_time_series = session.query(Words, Activities.isMastered).\
+        #                 join(Activities).\
+        #                 filter(Activities.user_id==user_id).\
+        #                 filter(Words.user_id == user_id).\
+        #                 filter(Activities.word_id == Words.id).group_by(Activities.date).all()
+        day = func.date_trunc('day', Activities.date)
+        activities_time_series = session.query(Activities.date, func.count(1).filter(Activities.isMastered), func.count(1).filter(not_(Activities.isMastered))).\
+                        filter(Activities.user_id==user_id).group_by(extract('day', Activities.date)).all()
+    
+        activities_time_series = Activities.create_time_series_dict(activities_time_series)
+        
+        # session.query(Table.column, func.count(Table.column)).group_by(Table.column).all()
         numMastered = 0
-        numNotMastered = 0
+        numStudying = 0
         activities_list = []
         for activitiy in all_activities:
             activities_dict = {}
@@ -226,6 +270,7 @@ class Activities(Base):
             activities_dict["word"] = activitiy[0].word
             activities_dict["short_definition"] = activitiy[0].short_definition
             activities_dict["pending"] = activitiy[0].pending
+            activities_dict["date"] = activitiy[1].date
             if activitiy[1].isMastered == True:
                 activities_dict["isMastered"] = "Mastered"
             else:
@@ -234,31 +279,38 @@ class Activities(Base):
             if activitiy[1].isMastered == True:
                 numMastered +=1
             else:
-                numNotMastered +=1
-            numMastered_dict= {"name":"numMasteredc","value":numMastered}
-            numNotMastered_dict = {"name":"numNotMastered","value":numNotMastered}
-        return activities_list, [numMastered_dict, numNotMastered_dict]
+                numStudying +=1
+            ratio = 100/(numMastered + numStudying)
+            masteredRatio = ratio * numMastered
+            studyRatio = ratio * numStudying
+
+            numMastered_dict= {"name":"Mastered","value":masteredRatio}
+            numStudying_dict = {"name":"Studying","value": studyRatio}
+        return activities_list, activities_time_series, [numMastered_dict, numStudying_dict]
             
-
-
-    # @classmethod
-    # def get_num_mastered(cls, user_id):
-    #     try:
-    #         activities = session.query(Activities).filter(Activities.user_id == user_id).all() 
-    #         numMastered = 0
-    #         numNotMastered = 0
-    #         for acvitivy in activities:
-    #             if acvitivy.isMastered == True:
-    #                 numMastered +=1
-    #             else:
-    #                 numNotMastered +=1
-    #         numMastered_dict= {"name":"numMastered","value":numMastered}
-    #         numNotMastered_dict = {"name":"numNotMastered","value":numNotMastered}
-    #         return [numMastered_dict, numNotMastered_dict]
-    #     except:
-    #         return None
-
     
+
+    @classmethod
+    def create_time_series_dict(cls, activities_time_series):
+        activity_time_series = []
+        for activiy in activities_time_series:
+            time_series_dict = {}
+            time_series_dict["name"] = activiy[0]
+            time_series_dict["Correct"] = activiy[1]
+            time_series_dict["Wrong"] = activiy[2]
+            activity_time_series.append(time_series_dict)
+        return activity_time_series
+
+
+       
+
+
+
+
+
+
+
+
     @classmethod
     def insert(cls, user_id, word_id, isMastered):
         new_activity = Activities()
@@ -268,26 +320,37 @@ class Activities(Base):
         session.add(new_activity)
         session.commit()
     
+    # @classmethod
+    # def update_activity(cls, user_id, isMastered_dict):
+
+    #     activities = session.query(Activities).filter(Activities.user_id == user_id).all()
+    #     word_id = []
+    #     if activities:
+    #         for activity in activities:
+    #             word_id.append(activity.word_id)
+    
+    #     for key, value in isMastered_dict.items():
+    #         if len(activities) == 0 or value[0] not in word_id:
+    #             if value[1] == True:
+    #                 Activities.insert(user_id, value[0], True)
+    #             else:
+    #                 Activities.insert(user_id, value[0], False)
+    #         else:
+    #             session.query(Activities).\
+    #                     filter(Activities.user_id == user_id).\
+    #                     filter(Activities.word_id == value[0]).\
+    #                     update({Activities.isMastered: value[1]}, synchronize_session = False)
+    
+
     @classmethod
     def update_activity(cls, user_id, isMastered_dict):
 
-        activities = session.query(Activities).filter(Activities.user_id == user_id).all()
-        word_id = []
-        if activities:
-            for activity in activities:
-                word_id.append(activity.word_id)
-    
-        for key, value in isMastered_dict.items():
-            if len(activities) == 0 or value[0] not in word_id:
-                if value[1] == True:
-                    Activities.insert(user_id, value[0], True)
-                else:
-                    Activities.insert(user_id, value[0], False)
+        for value in isMastered_dict.values():
+            if value[1] == True:
+                Activities.insert(user_id, value[0], True)
             else:
-                session.query(Activities).\
-                        filter(Activities.user_id == user_id).\
-                        filter(Activities.word_id == value[0]).\
-                        update({Activities.isMastered: value[1]}, synchronize_session = False)
+                Activities.insert(user_id, value[0], False)
+        print(session.query(Activities).all)
 
  
     
