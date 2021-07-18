@@ -116,6 +116,34 @@ class Words(Base):
         return session.query(Words).filter(Words.user_id == user_id).all()
 
 
+    @classmethod
+    def get_pending_words(cls, user_id):
+        words = session.query(Words).filter(Words.user_id == user_id).filter(Words.pending==True).all()
+        pending_words = []
+        for word in words:
+            pending_word = {}
+            if word.short_definition is None:
+                continue
+            else:
+                pending_word["id"] = word.id
+                pending_word["word"] = word.word
+                pending_word["short_definition"] = word.short_definition
+                pending_word["example"] = word.example
+                pending_words.append(pending_word)
+        return pending_words
+    
+    @classmethod
+    def update_pending_words(cls, user_id, selected_words):
+        selected_word_id = []
+        for words in selected_words:
+            selected_word_id.append(words["id"])
+        for selected_id in selected_word_id:
+            print(selected_id)
+            word = session.query(Words).\
+                            filter(Words.user_id == user_id).\
+                            filter(Words.pending==True).\
+                            filter(Words.id ==selected_id).\
+                            update({Words.pending: False, Words.selected:True }, synchronize_session = False)
 
     @classmethod
     def get_flashcards(cls, user_id,  num_cards=20):
@@ -163,42 +191,6 @@ class Words(Base):
         return isMastered_dict
 
 
-        
-
-
-    # @classmethod
-    # def generate_ramdom_cards(cls, user_id, num_cards=20):
-
-    #     num_choices = num_cards * 3
-
-    #     if num_cards < 0:
-    #         num_cards = 0
-
-    #     words = session.query(Words).filter(Words.user_id == user_id).filter(Words.pending == False).order_by(func.random()).limit(num_cards).all()
-    #     print(words)
-    #     word_list = []
-
-    #     if len(words) < num_cards:
-    #         num_cards = len(words)
-        
-    #     for word in words:
-    #         word_dict = {}
-    #         word_dict["word"] = word.word
-    #         word_dict["speech"] = word.speech
-    #         word_dict["definition"] = word.definition
-    #         word_dict["short_definition"] = word.short_definition
-    #         word_dict["example"] = word.example
-    #         word_dict["choices"] = Words.generate_choices(word.short_definition, user_id, num_choices)
-    #         word_dict["mastered"] = False
-    #         word_list.append(word_dict)
-    #     return word_list
-    
-    #generate_choice
-    
-
-
-
-
 class Activities(Base):
     __tablename__ = 'activities'
     id = Column(Integer, primary_key=True)
@@ -212,33 +204,6 @@ class Activities(Base):
         return "<Activity(id='%s',date='%s',isMastered='%s', numAttempt='%s',user_id='%s' ,word_id='%s')>" % (
                              self.id, self.date, self.isMastered, self.numAttempt, self.user_id, self.word_id)
 
-
-    # @classmethod
-    # def get_activities(cls, user_id):
-    #     all_activities = session.query(Words, Activities).\
-    #                     join(Activities).filter(Activities.user_id==user_id).filter(Words.user_id == user_id).filter(Activities.word_id == Words.id).all()
-    #     numMastered = 0
-    #     numNotMastered = 0
-    #     activities_list = []
-    #     for activitiy in all_activities:
-    #         activities_dict = {}
-    #         activities_dict["id"] = activitiy[0].id
-    #         activities_dict["word"] = activitiy[0].word
-    #         activities_dict["short_definition"] = activitiy[0].short_definition
-    #         activities_dict["pending"] = activitiy[0].pending
-    #         if activitiy[1].isMastered == True:
-    #             activities_dict["isMastered"] = "Mastered"
-    #         else:
-    #             activities_dict["isMastered"] = "Studying"
-    #         activities_list.append(activities_dict)
-    #         if activitiy[1].isMastered == True:
-    #             numMastered +=1
-    #         else:
-    #             numNotMastered +=1
-    #         numMastered_dict= {"name":"Mastered","value":numMastered}
-    #         numNotMastered_dict = {"name":"Studying","value":numNotMastered}
-    #     return activities_list, [numMastered_dict, numNotMastered_dict]
-
     @classmethod
     def get_activities(cls, user_id):
         all_activities = session.query(Words, Activities, func.max(Activities.date)).\
@@ -248,19 +213,12 @@ class Activities(Base):
                         filter(Activities.word_id == Words.id).\
                         group_by(Activities.word_id).\
                         all()
-
-        # activities_time_series = session.query(Words, Activities.isMastered).\
-        #                 join(Activities).\
-        #                 filter(Activities.user_id==user_id).\
-        #                 filter(Words.user_id == user_id).\
-        #                 filter(Activities.word_id == Words.id).group_by(Activities.date).all()
         day = func.date_trunc('day', Activities.date)
         activities_time_series = session.query(Activities.date, func.count(1).filter(Activities.isMastered), func.count(1).filter(not_(Activities.isMastered))).\
                         filter(Activities.user_id==user_id).group_by(extract('day', Activities.date)).all()
     
         activities_time_series = Activities.create_time_series_dict(activities_time_series)
         
-        # session.query(Table.column, func.count(Table.column)).group_by(Table.column).all()
         numMastered = 0
         numStudying = 0
         activities_list = []

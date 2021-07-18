@@ -155,8 +155,8 @@ def search_definitions():
 
 #pre: Word's table is initialized
 #post: call api and save data to Words table then return a status message 
-#test curl -X POST http://127.0.0.1:5000/api/add_popup -d '{"word":"tangerine"}'  -H "Content-Type: application/json"
-@app.route("/api/add_popup", methods=['POST'])   #how to authenticate?
+#test curl -X POST http://127.0.0.1:5000/api/add/popup -d '{"word":"tangerine"}'  -H "Content-Type: application/json"
+@app.route("/api/add/popup", methods=['POST'])   #how to authenticate?
 def add_from_popup(): #add word from chrome extension popup
     data = request.get_json()
     word = data.get("word")
@@ -166,10 +166,8 @@ def add_from_popup(): #add word from chrome extension popup
     try:
         word_info_list = get_dictionary_info(word)
         for word_info in word_info_list:
-            Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], True, True, user.id)
-            words = Words.get_flashcards()
-            print(words)
-            return jsonify({"status":"success"})
+            Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], False, True, user.id)
+        return jsonify({"status":"success","definition_choice": word_info_list})
     except WordNotFoundError as e:
         return jsonify({"status":"fail"})
 
@@ -191,6 +189,34 @@ def display_all_flashcards():
     print(isMastered_dict)
     
     return jsonify({"word_list":word_list, "isMastered_dict": isMastered_dict})
+
+
+@app.route("/api/display/words/pending", methods=['POST'])
+def display_pending_words():  
+    data = request.get_json()
+    session_id = data.get("session_id")
+    user = Users.session_authenticate(session_id)
+    if user is None:
+        return jsonify({"status":"fail", "message":"user does not exist"})
+    pending_words = Words.get_pending_words(user.id)
+    return jsonify({"pending_words":pending_words})
+
+@app.route("/api/update/pending", methods=["POST"])
+def update_pending_word():
+    data = request.get_json()
+    session_id = data.get("session_id")
+    selected_words = data.get("selected")
+    if not selected_words:
+        return jsonify({"status":"fail"})
+    user = Users.session_authenticate(session_id)
+    if user is None:
+        return jsonify({"status":"fail", "message":"user does not exist"})
+    Words.update_pending_words(user.id, selected_words)
+    print(selected_words)
+    return jsonify({"status":"success"})
+
+
+
 
 
 
