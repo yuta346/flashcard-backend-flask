@@ -119,6 +119,7 @@ class Words(Base):
     @classmethod
     def get_pending_words(cls, user_id):
         words = session.query(Words).filter(Words.user_id == user_id).filter(Words.pending==True).all()
+        print(words)
         pending_words = []
         for word in words:
             pending_word = {}
@@ -133,28 +134,42 @@ class Words(Base):
         return pending_words
     
     @classmethod
-    def update_pending_words(cls, user_id, selected_words):
+    def update_pending_words(cls, user_id, selected_words, pending_status):
         selected_word_id = []
         for words in selected_words:
             selected_word_id.append(words["id"])
         for selected_id in selected_word_id:
             print(selected_id)
-            word = session.query(Words).\
-                            filter(Words.user_id == user_id).\
-                            filter(Words.pending==True).\
-                            filter(Words.id ==selected_id).\
-                            update({Words.pending: False, Words.selected:True }, synchronize_session = False)
+            if pending_status == "approve":
+                print("approve")
+                word = session.query(Words).\
+                                filter(Words.user_id == user_id).\
+                                filter(Words.pending==True).\
+                                filter(Words.id ==selected_id).\
+                                update({Words.pending: False, Words.selected:True }, synchronize_session = False)
+            else:
+                print("decline")
+                word = session.query(Words).\
+                                filter(Words.user_id == user_id).\
+                                filter(Words.pending==True).\
+                                filter(Words.id ==selected_id).\
+                                update({Words.pending: False, Words.selected:False }, synchronize_session = False)
+
 
     @classmethod
-    def get_flashcards(cls, user_id,  num_cards=20):
-        words = session.query(Words).filter(Words.user_id == user_id).filter(Words.selected==True).limit(num_cards).all()
-        
+    def get_flashcards(cls, user_id,  num_cards=None):
+        print(num_cards)
+        if num_cards is None:
+            num_cards = 20
+        words = session.query(Words).filter(Words.user_id == user_id).filter(Words.selected==True).limit(num_cards*2).all()
+
         word_list = []
         temp = []
         num_choices = len(words)
+        print(type(num_cards))
         
         for word in words:
-            if word.word not in temp:
+            if word.word not in temp and len(word_list) <= int(num_cards)-1:
                 temp.append(word.word)
                 #word.as_dict()
                 word_dict = {}

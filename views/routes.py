@@ -180,15 +180,15 @@ def display_all_flashcards():
     data = request.get_json()
     session_id = data.get("session_id")
     num_cards = data.get("num_cards")
-    print("num cards###########")
-    print(num_cards)
     user = Users.session_authenticate(session_id)
     if user is None:
         return jsonify({"status":"fail"})
     word_list, isMastered_dict = Words.get_flashcards(user.id, num_cards)
-    print(isMastered_dict)
+    print(len(word_list))
+    print(len(isMastered_dict))
     
     return jsonify({"word_list":word_list, "isMastered_dict": isMastered_dict})
+
 
 
 @app.route("/api/display/words/pending", methods=['POST'])
@@ -201,19 +201,23 @@ def display_pending_words():
     pending_words = Words.get_pending_words(user.id)
     return jsonify({"pending_words":pending_words})
 
+
+
 @app.route("/api/update/pending", methods=["POST"])
 def update_pending_word():
     data = request.get_json()
+    print(data)
     session_id = data.get("session_id")
     selected_words = data.get("selected")
+    pending_status = data.get("pending_status")
     if not selected_words:
-        return jsonify({"status":"fail"})
+        return jsonify({"status":"fail", "message":"no word selected"})
     user = Users.session_authenticate(session_id)
     if user is None:
         return jsonify({"status":"fail", "message":"user does not exist"})
-    Words.update_pending_words(user.id, selected_words)
-    print(selected_words)
-    return jsonify({"status":"success"})
+    Words.update_pending_words(user.id, selected_words, pending_status)
+    pending_words = Words.get_pending_words(user.id)
+    return jsonify({"status":"success", "pending_words":pending_words})
 
 
 
