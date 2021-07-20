@@ -56,7 +56,8 @@ def login():
         session_id = str(Users.generate_session_id())
         user.session_id = session_id
         session.commit()
-        return jsonify({"status":"success", "username":user.username, "session_id":user.session_id})
+        pending_words = Words.get_pending_words(user.id)
+        return jsonify({"status":"success", "username":user.username, "session_id":user.session_id, "pending_words":pending_words})
     return jsonify({"status":"fail"})
 
 @app.route("/api/popup_login", methods=["POST"])
@@ -206,7 +207,6 @@ def display_pending_words():
 @app.route("/api/update/pending", methods=["POST"])
 def update_pending_word():
     data = request.get_json()
-    print(data)
     session_id = data.get("session_id")
     selected_words = data.get("selected")
     pending_status = data.get("pending_status")
