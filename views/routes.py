@@ -29,7 +29,7 @@ def signup():
     if user is not None:
         return jsonify({"status":"fail", "message":"Account already exists"})
 
-    Users.insert(username, email, password_hash, session_id)
+    Users.insert(username, email, password_hash, session_id, None)
     Users.display()
 
     return jsonify({"status":"success", "username":username, "session_id":session_id})
@@ -56,11 +56,11 @@ def login():
         session_id = str(Users.generate_session_id())
         user.session_id = session_id
         session.commit()
-        pending_words = Words.get_pending_words(user.id)
-        return jsonify({"status":"success", "username":user.username, "session_id":user.session_id, "pending_words":pending_words})
+        pending_length = len(Words.get_pending_words(user.id))
+        return jsonify({"status":"success", "username":user.username, "session_id":user.session_id, "pending_length":pending_length})
     return jsonify({"status":"fail"})
 
-@app.route("/api/popup_login", methods=["POST"])
+@app.route("/api/popup/login", methods=["POST"])
 def popup_login():
     
     data = request.get_json()
@@ -72,7 +72,27 @@ def popup_login():
     password_hash = user.password_hash
     result = Users.verify_password(password, password_hash)
     if result == True and username == user.username:
-        return jsonify({"status":"success", "username":user.username, "session_id":user.session_id})
+        session_id = str(Users.generate_session_id())
+        user.session_id_extension = session_id
+        session.commit()
+        print(user)
+        return jsonify({"status":"success", "username":user.username, "session_id":user.session_id_extension})
+
+
+@app.route("/api/popup/logout", methods=["POST"])
+def popup_logout():
+    data = request.get_json()
+    print(data)
+    session_id = data.get("session_id")
+    user = Users.session_extension_authenticate(session_id)
+    if user is None:
+        return jsonify({"status":"fail"})
+    user.session_id = None
+    session.commit()
+    Users.display()
+    return jsonify({"status":"success"})
+
+
 
 
 #pre: session_id exists
@@ -84,10 +104,8 @@ def logout():
     data = request.get_json()
     session_id = data.get("session_id")
     user = Users.session_authenticate(session_id)
-
     if user is None:
         return jsonify({"status":"fail"})
-
     user.session_id = None
     session.commit()
     Users.display()
@@ -157,12 +175,12 @@ def search_definitions():
 #pre: Word's table is initialized
 #post: call api and save data to Words table then return a status message 
 #test curl -X POST http://127.0.0.1:5000/api/add/popup -d '{"word":"tangerine"}'  -H "Content-Type: application/json"
-@app.route("/api/add/popup", methods=['POST'])   #how to authenticate?
+@app.route("/api/add/popup", methods=['POST'])   #
 def add_from_popup(): #add word from chrome extension popup
     data = request.get_json()
     word = data.get("word")
-    session_id = data.get("session_id")
-    user = Users.session_authenticate(session_id)
+    session_id_extension = data.get("session_id")
+    user = Users.session_extension_authenticate(session_id_extension)
 
     try:
         word_info_list = get_dictionary_info(word)

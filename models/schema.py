@@ -18,20 +18,22 @@ class Users(Base):
     email = Column(String, unique=True)
     password_hash = Column(String)
     session_id = Column(String)
+    session_id_extension = Column(String)
     word_id = relationship("Words", lazy=True)
     acviity_id = relationship("Activities", lazy=True)
 
     def __repr__(self):
-        return "<User(id='%s',username='%s', email='%s', password_hash='%s', session_id='%s')>" % (
-                             self.id, self.username, self.email, self.password_hash, self.session_id)
+        return "<User(id='%s',username='%s', email='%s', password_hash='%s', session_id='%s', session_id_extension='%s')>" % (
+                             self.id, self.username, self.email, self.password_hash, self.session_id, self.session_id_extension)
     
     @classmethod
-    def insert(cls, username, email, password_hash, session_id):
+    def insert(cls, username, email, password_hash, session_id, session_id_extension):
         new_user = Users()
         new_user.username = username
         new_user.email = email
         new_user.password_hash = password_hash
         new_user.session_id = session_id
+        new_user.session_id_extension = session_id_extension
         session.add(new_user)
         session.commit()
 
@@ -63,6 +65,14 @@ class Users(Base):
     @classmethod
     def session_authenticate(cls, session_id):
         user = session.query(Users).filter(Users.session_id==session_id).one() 
+        print(user)
+        if user:
+            return user
+        return None
+
+    @classmethod
+    def session_extension_authenticate(cls, session_id_extension):
+        user = session.query(Users).filter(Users.session_id_extension==session_id_extension).one() 
         print(user)
         if user:
             return user
