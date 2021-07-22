@@ -87,7 +87,7 @@ def popup_logout():
     user = Users.session_extension_authenticate(session_id)
     if user is None:
         return jsonify({"status":"fail"})
-    user.session_id = None
+    user.session_id_extension = None
     session.commit()
     Users.display()
     return jsonify({"status":"success"})
@@ -191,21 +191,31 @@ def add_from_popup(): #add word from chrome extension popup
         return jsonify({"status":"fail"})
 
 
+@app.route("/api/display/all/flashcards", methods=["POST"])
+def display_all_flashcards():
+    data = request.get_json()
+    print("##########")
+    print(data)
+    session_id = data.get("session_id")
+    user = Users.session_authenticate(session_id)
+    if user is None:
+        return jsonify({"status":"fail"})
+    all_flashcards = Words.get_all_words(user.id)
+    print(all_flashcards)
+    return jsonify({"all_flashcards":all_flashcards})
+
+
 #pre: Words table is initialized and cards exist
-#post:return a word_list contains all the data in the Words' table
-#test curl -X POST http://127.0.0.1:5000/api/display_all_flashcards -d '{"session_id":"a3cf6805-908d-42c8-b149-a1399f0e8da7"}'  -H "Content-Type: application/json"
-@app.route("/api/display_all_flashcards", methods=['POST'])
-def display_all_flashcards():  
+#post:return a word_list and isMastered_dict for quiz and study
+@app.route("/api/display/generated/flashcards", methods=['POST'])
+def dislpay_generated_flashcards():  
     data = request.get_json()
     session_id = data.get("session_id")
     num_cards = data.get("num_cards")
     user = Users.session_authenticate(session_id)
     if user is None:
         return jsonify({"status":"fail"})
-    word_list, isMastered_dict = Words.get_flashcards(user.id, num_cards)
-    print(len(word_list))
-    print(len(isMastered_dict))
-    
+    word_list, isMastered_dict = Words.generate_flashcards(user.id, num_cards)    
     return jsonify({"word_list":word_list, "isMastered_dict": isMastered_dict})
 
 
@@ -238,10 +248,6 @@ def update_pending_word():
     return jsonify({"status":"success", "pending_words":pending_words})
 
 
-
-
-
-
 #test  curl -X POST http://127.0.0.1:5000/uodate/card -d '{"word":"cherry","speech":"noun","definition":"fruit","example":"none"}'  -H "Content-Type: application/json"
 @app.route("/api/update_flashcard", methods=["POST"]) #modify it later
 def update_flashcard():
@@ -253,12 +259,10 @@ def update_flashcard():
     example = data.get("example")
 
     word_update = session.query(Words).filter(Words.word==word).one()
-    print(word_update)
     word_update.word = word
     word_update.speech = speech
     word_update.definition=definition
     word_update.example = example
-
     words = Words.display()
     print(words)
 
@@ -268,18 +272,18 @@ def update_flashcard():
 #pre: Words table is initialized and word exists
 #post: return rondomly picked words, multiple choice with answer key 
 #test: curl -X POST http://127.0.0.1:5000/api/generate_flashcards -d '{"session_id":"f3a53399-3e0a-45ad-98ed-6e663d370667", "num_cards":"0"}'  -H "Content-Type: application/json"
-@app.route("/api/generate_flashcards", methods=["POST"])
-def generate_flashcards():
+# @app.route("/api/generate_flashcards", methods=["POST"]) #??
+# def generate_flashcards():
    
-    data = request.get_json()
-    session_id = data.get("session_id")
-    num_cards = int(data.get("num_cards"))
-    user = Users.session_authenticate(session_id)
+#     data = request.get_json()
+#     session_id = data.get("session_id")
+#     num_cards = int(data.get("num_cards"))
+#     user = Users.session_authenticate(session_id)
 
-    if user is None:
-        return jsonify({"status":"fail"})
-    word_list = Words.generate_ramdom_cards(user.id, num_cards)
-    return jsonify({"result":word_list})
+#     if user is None:
+#         return jsonify({"status":"fail"})
+#     word_list = Words.generate_ramdom_cards(user.id, num_cards)
+#     return jsonify({"result":word_list})
 
 
 
@@ -311,22 +315,5 @@ def get_activity():
     if user is None:
         return jsonify({"status":"fail", "message":"user does not exist"})
     user_activities, activities_time_series, num_mastered = Activities.get_activities(user.id)
-    # print(user_activities)
-    # print(num_mastered)
     return jsonify({"activities": user_activities, "numMastered": num_mastered, "time_series":activities_time_series})
 
-
-# @app.route("/api/account/activity/words", methods=["POST"])
-# def get_words_activity():
-#     data = request.get_json()
-#     session_id = data.get("session_id")
-#     user = Users.session_authenticate(session_id)
-#     if user is None:
-#         return jsonify({"status":"fail", "message":"user does not exist"})
-#     print(user)
-#     if user is None:
-#         return jsonify({"status":"fail", "message":"user does not exist"})
-#     words_activity = Activities.get_words_activities(user.id)
-#     print(words_activity)
-#     return jsonify({"status":"succes"})
-    

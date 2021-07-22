@@ -44,9 +44,6 @@ class Users(Base):
         print(all_users)
         return all_users
     
-    @classmethod
-    def session_authenticate():
-        pass
     
     @staticmethod
     def hash_password(password):
@@ -122,14 +119,30 @@ class Words(Base):
         session.commit()
 
     @classmethod
-    def display_all_cards(cls, user_id):
-        return session.query(Words).filter(Words.user_id == user_id).all()
+    def get_all_words(cls, user_id):
+        words =  session.query(Words).filter(Words.user_id == user_id).filter(Words.selected == True).all()
+        all_words = []
+        for word in words:
+            word_info = {}
+            if word.short_definition is None:
+                continue
+            elif word.example is None:
+                word_info["id"] = word.id
+                word_info["word"] = word.word
+                word_info["short_definition"] = word.short_definition
+                word_info["example"] = "Not Available"
+            else:
+                word_info["id"] = word.id
+                word_info["word"] = word.word
+                word_info["short_definition"] = word.short_definition
+                word_info["example"] = word.example
+            all_words.append(word_info)
+        return all_words
 
 
     @classmethod
     def get_pending_words(cls, user_id):
         words = session.query(Words).filter(Words.user_id == user_id).filter(Words.pending==True).all()
-        print(words)
         pending_words = []
         for word in words:
             pending_word = {}
@@ -166,32 +179,29 @@ class Words(Base):
                                 update({Words.pending: False, Words.selected:False }, synchronize_session = False)
 
 
+
     @classmethod
-    def get_flashcards(cls, user_id,  num_cards=None):
+    def generate_flashcards(cls, user_id,  num_cards=None):
         print(num_cards)
         if num_cards is None:
             num_cards = 20
         words = session.query(Words).filter(Words.user_id == user_id).filter(Words.selected==True).limit(num_cards*2).all()
-
         word_list = []
         temp = []
-        num_choices = len(words)
-        print(type(num_cards))
         
         for word in words:
             if word.word not in temp and len(word_list) <= int(num_cards)-1:
                 temp.append(word.word)
-                #word.as_dict()
-                word_dict = {}
-                word_dict["word_id"] = word.id
-                word_dict["word"] = word.word
-                word_dict["definition"] = word.definition
-                word_dict["short_definition"] = word.short_definition
-                word_dict["example"] = word.example
-                word_dict["choices"] = Words.generate_choices(word.short_definition, user_id)
-                word_dict["selected"] = word.selected
-                word_dict["pending"] = word.pending
-                word_list.append(word_dict)
+                word_info = {}
+                word_info["word_id"] = word.id
+                word_info["word"] = word.word
+                word_info["definition"] = word.definition
+                word_info["short_definition"] = word.short_definition
+                word_info["example"] = word.example
+                word_info["choices"] = Words.generate_choices(word.short_definition, user_id)
+                word_info["selected"] = word.selected
+                word_info["pending"] = word.pending
+                word_list.append(word_info)
         isMastered_dict = Words.generate_isMastered_dict(word_list)
         word_list_shaffle = random.sample(word_list, len(word_list))
         return word_list_shaffle, isMastered_dict
