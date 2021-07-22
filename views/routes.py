@@ -113,48 +113,54 @@ def logout():
 
 
 
-@app.route("/api/update", methods=["POST"])
-def update():
-    data = request.get_json()
-    username = data.get("username")
-    password = data.get("password")
-    pass
-
-
-
 #pre: Word's table is initialized
 #post: add user's custom data the database and return a status message 
 #test curl -X POST http://127.0.0.1:5000/api/add_word -d '{"word":"banana","speech":"noun","definition":"fruit","example":"none"}'  -H "Content-Type: application/json"
-@app.route("/api/add/word", methods=["POST"])  #create user's custom card fix it later
+@app.route("/api/add/word/dictionary", methods=["POST"])  #create user's custom card fix it later
 def add_word():
 
     data = request.get_json()
     word_info_list = data.get("word_info_list")
-    print(word_info_list)
-    print(len(word_info_list))
     radioValue = data.get("radioValue")
+    session_id = data.get("session_id")
+    user = Users.session_authenticate(session_id)
+    if user is None:
+        return jsonify({"status":"fail", "message":"authentication failed"})
+
+    try:
+        for word_info in word_info_list:
+            saved_words = session.query(Words).filter(Words.user_id == user.id).filter(Words.short_definition == word_info["short_definition"]).all()
+            if not saved_words:
+                if word_info["short_definition"]== radioValue:
+                    Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], True, False, user.id)
+                else:
+                    Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], False, False, user.id)
+            else:
+                return jsonify({"status":"fail", "message":"Word with the same meaning alrady exists"})
+        # print(session.query(Words).filter(Words.user_id == user.id).all())
+        return jsonify({"status":"success"})
+    except WordNotFoundError as e:
+        return jsonify({"status":"fail", "message": "cannot find a word"})
+
+
+@app.route("/api/add/word/custom", methods=["POST"])
+def add_custom_word():
+    data = request.get_json()
+    user_input = data.get("userInput")
     session_id = data.get("session_id")
     user = Users.session_authenticate(session_id)
 
     if user is None:
         return jsonify({"status":"fail", "message":"authentication failed"})
 
-    try:
-        for word_info in word_info_list:
-            print(word_info)
-            if word_info["short_definition"]== radioValue:
-                Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], True, False, user.id)
-            else:
-                Words.insert(word_info["word"], word_info["definition"], word_info["short_definition"], word_info["example"], False, False, user.id)
-        # Words.get_flashcards(user.id)
-        all_cards = Words.display_all_cards(user.id)
-        print(all_cards)
-        # 
-        # words= Words.display_all(user_id)
-        # print(words) 
-        return jsonify({"status":"success"})
-    except WordNotFoundError as e:
-        return jsonify({"status":"fail", "message": "cannot find a word"})
+    saved_words = session.query(Words).filter(Words.user_id == user.id).filter(Words.definition == user_input["definition"]).all()
+    if not saved_words:
+        Words.insert(user_input["word"], user_input["definition"], user_input["definition"], user_input["example"], True, False, user.id)
+    else:
+        return jsonify({"status":"fail", "message":"Word with the same meaning alrady exists"})
+    return jsonify({"status":"success"})
+    
+
 
 
 @app.route("/api/serach/definitions", methods=["POST"])
@@ -162,6 +168,9 @@ def search_definitions():
     data = request.get_json()
     word = data.get("word")
     session_id = data.get("session_id")
+    user = Users.session_authenticate(session_id)
+    if user is None:
+        return jsonify({"status":"fail", "message":"user does not exists"})
 
     try:
         word_info_list = get_dictionary_info(word)
@@ -194,8 +203,6 @@ def add_from_popup(): #add word from chrome extension popup
 @app.route("/api/display/all/flashcards", methods=["POST"])
 def display_all_flashcards():
     data = request.get_json()
-    print("##########")
-    print(data)
     session_id = data.get("session_id")
     user = Users.session_authenticate(session_id)
     if user is None:

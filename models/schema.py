@@ -103,8 +103,8 @@ class Words(Base):
     # child = relationship("Child", back_populates="parent", uselist=False)
 
     def __repr__(self):
-        return "<Word(id='%s',word='%s', definition='%s', short_definition='%s',example='%s', selected='%s',pending='%s' ,user_id='%s')>" % (
-                             self.id, self.word, self.short_definition, self.definition, self.example, self.selected, self.pending, self.user_id)
+        return "<Word(id='%s',word='%s' ,definition='%s', short_definition='%s',example='%s', selected='%s',pending='%s' ,user_id='%s')>" % (
+                             self.id, self.word,self.short_definition, self.definition, self.example, self.selected, self.pending, self.user_id)
     @classmethod
     def insert(cls, word, definition, short_definition, example, selected, pending, user_id):
         new_word = Words()
