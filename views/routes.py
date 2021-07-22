@@ -222,7 +222,9 @@ def dislpay_generated_flashcards():
     user = Users.session_authenticate(session_id)
     if user is None:
         return jsonify({"status":"fail"})
-    word_list, isMastered_dict = Words.generate_flashcards(user.id, num_cards)    
+    word_list, isMastered_dict = Words.generate_flashcards(user.id, num_cards)  
+    # print(word_list)
+    # print(isMastered_dict)  
     return jsonify({"word_list":word_list, "isMastered_dict": isMastered_dict})
 
 

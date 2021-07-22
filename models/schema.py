@@ -182,14 +182,13 @@ class Words(Base):
 
     @classmethod
     def generate_flashcards(cls, user_id,  num_cards=None):
-        print(num_cards)
         if num_cards is None:
             num_cards = 20
-        words = session.query(Words).filter(Words.user_id == user_id).filter(Words.selected==True).limit(num_cards*2).all()
+        words = session.query(Words).filter(Words.user_id == user_id).filter(Words.selected==True).limit(num_cards*3).all()
         word_list = []
         temp = []
         
-        for word in words:
+        for word in random.sample(words, len(words)):
             if word.word not in temp and len(word_list) <= int(num_cards)-1:
                 temp.append(word.word)
                 word_info = {}
@@ -203,8 +202,7 @@ class Words(Base):
                 word_info["pending"] = word.pending
                 word_list.append(word_info)
         isMastered_dict = Words.generate_isMastered_dict(word_list)
-        word_list_shaffle = random.sample(word_list, len(word_list))
-        return word_list_shaffle, isMastered_dict
+        return word_list, isMastered_dict
 
     @classmethod
     def generate_choices(cls, short_definition, user_id):
